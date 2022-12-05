@@ -15,6 +15,7 @@ import torchvision.transforms as transforms
 from torchvision.utils import save_image
 import numpy as np
 import torchvision
+from GAN_client.models import Discriminator, Generator, G_D_Assemble
 
 
 # #############################################################################
@@ -23,68 +24,6 @@ import torchvision
 
 warnings.filterwarnings("ignore", category=UserWarning)
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-class Discriminator(nn.Module):
-
-    def __init__(self):
-        super(Discriminator,self).__init__()
-
-        self.disc = nn.Sequential(
-                        nn.Linear(784, 512),
-                        nn.LeakyReLU(0.2),
-                        nn.Linear(512, 256),
-                        nn.LeakyReLU(0.2),
-                        nn.Linear(256, 1),
-                        # nn.Sigmoid()
-                    )
-
-
-    def forward(self,x):
-
-        x = self.disc(x)
-        
-
-        return x
-
-
-class Generator(nn.Module):
-
-    def __init__(self,latent_dim = 100):
-        super(Generator,self).__init__()
-
-        self.gen =  nn.Sequential(
-                            nn.Linear(latent_dim, 256),
-                            nn.LeakyReLU(0.2),
-                            nn.BatchNorm1d(256, momentum=0.7),
-                            nn.Linear(256, 512),
-                            nn.LeakyReLU(0.2),
-                            nn.BatchNorm1d(512, momentum=0.7),
-                            nn.Linear(512, 1024),
-                            nn.LeakyReLU(0.2),
-                            nn.BatchNorm1d(1024, momentum=0.7),
-                            nn.Linear(1024, 784),
-                            nn.Tanh()
-                        )
-
-    def forward(self,x):
-
-        x = self.gen(x)
-        return x
-
-
-class G_D_Assemble(nn.Module):
-    def __init__(self, G, D):
-        super(G_D_Assemble, self).__init__()
-        self.int_generator = G
-        self.int_discriminator= D
-        
-    def forward(self, x):
-        
-        x = self.int_generator(x)
-        x = self.int_discriminator(x)
- 
-        return x
 
 
 # looks weird, but makes pixel values between -1 and +1
@@ -107,31 +46,32 @@ len(train_dataset)
 
 batch_size = 128
 data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                          batch_size=batch_size, 
+                                          batch_size=batch_size,
                                           shuffle=True)
 
 
-def train_gan(G,D, combined_model, data_loader, batch_size,epochs):
+def train_gan(G, D, combined_model, data_loader, batch_size, epochs):
 
-    latent_dim= 100
+    latent_dim = 100
 
     # # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # D = D.to(device)
     # G = G.to(device)
 
-
     # Loss and optimizers
     criterion = nn.BCEWithLogitsLoss()
 
-    #optimizes parameters only in D model
-    d_optimizer = torch.optim.Adam(D.parameters(), lr=0.0002, betas=(0.5, 0.999))
+    # optimizes parameters only in D model
+    d_optimizer = torch.optim.Adam(
+        D.parameters(), lr=0.0002, betas=(0.5, 0.999))
 
-    #optimizes parameters only in G model
-    g_optimizer = torch.optim.Adam(G.parameters(), lr=0.0002, betas=(0.5, 0.999))
-
+    # optimizes parameters only in G model
+    g_optimizer = torch.optim.Adam(
+        G.parameters(), lr=0.0002, betas=(0.5, 0.999))
 
     # scale image back to (0, 1)
+
     def scale_image(img):
         out = (img + 1) / 2
         return out
@@ -156,12 +96,11 @@ def train_gan(G,D, combined_model, data_loader, batch_size,epochs):
 
             # reshape and move to GPU
             n = inputs.size(0)
-            inputs = inputs.reshape(n, 784).to(device) #(-1,784 ) also works
+            inputs = inputs.reshape(n, 784).to(device)  # (-1,784 ) also works
 
             # set ones and zeros to correct size
             ones = ones_[:n]
             zeros = zeros_[:n]
-
 
             ###########################
             ### Train discriminator ###
@@ -209,15 +148,16 @@ def train_gan(G,D, combined_model, data_loader, batch_size,epochs):
                 d_losses.append(d_loss.item())
                 g_losses.append(g_loss.item())
 
-
         ### print and save things ###
-        print(f"Epoch: {epoch}, d_loss: {d_loss.item()}, g_loss: {g_loss.item()}")
+        print(
+            f"Epoch: {epoch}, d_loss: {d_loss.item()}, g_loss: {g_loss.item()}")
 
         # PyTorch has a function to save a batch of images to file
         fake_images = fake_images.reshape(-1, 1, 28, 28)
         save_image(scale_image(fake_images), f"gan_images/{epoch+1}.png")
 
-# Create models and load state_dicts    
+
+# Create models and load state_dicts
 discriminator = Discriminator()
 generator = Generator(latent_dim=100)
 
@@ -225,7 +165,6 @@ generator = Generator(latent_dim=100)
 combined_model = G_D_Assemble(generator, discriminator)
 
 combined_model = combined_model.to(DEVICE)
-
 
 
 # Define Flower client
@@ -240,12 +179,13 @@ class FlowerClient(fl.client.NumPyClient):
 
     def fit(self, parameters, config):
         self.set_parameters(parameters)
-        train_gan(generator,discriminator, combined_model, data_loader, batch_size,epochs=1)
+        train_gan(generator, discriminator, combined_model,
+                  data_loader, batch_size, epochs=1)
         return self.get_parameters(config={}), len(data_loader.dataset), {}
 
     def evaluate(self, parameters, config):
         self.set_parameters(parameters)
-    
+
         return 0.5, 100, {"accuracy": 1.0}
 
 
@@ -254,7 +194,3 @@ fl.client.start_numpy_client(
     server_address="127.0.0.1:8080",
     client=FlowerClient(),
 )
-
-
-
-

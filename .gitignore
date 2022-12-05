@@ -4,3 +4,4 @@ gan_images/
 gan_images_centralized/
 MNIST/
 cifar-10-python.tar.gz
+*.pyc
