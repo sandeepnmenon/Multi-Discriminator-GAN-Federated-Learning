@@ -8,6 +8,10 @@ from torchvision.utils import save_image
 from .models import Discriminator, Generator
 
 
+def scale_image(img):
+    out = (img + 1) / 2
+    return out
+    
 def load_gan():
     generator = Generator(latent_dim=100)
     discriminator = Discriminator()
@@ -39,7 +43,9 @@ def get_combined_gan_params(generator, discriminator, fedbn=False):
 
 def train_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epochs, client_id):
 
-    latent_dim = 100
+    latent_dim = G.latent_dim
+    G.train()
+    D.train()
 
     # # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -51,9 +57,6 @@ def train_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epochs, c
 
     # scale image back to (0, 1)
 
-    def scale_image(img):
-        out = (img + 1) / 2
-        return out
 
     # Create a folder to store generated images
     if not os.path.exists('gan_images'):

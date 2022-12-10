@@ -24,6 +24,15 @@ def fit_config(server_round: int):
     }
     return config
 
+def evaluate_config(server_round: int):
+    """Return evaluation configuration dict for each round.
+    Perform five local evaluation steps on each client (i.e., use five
+    batches) during rounds one to three, then increase to ten local
+    evaluation steps.
+    """
+
+    return {"num_eval_images": 100}
+
 
 if __name__ == "__main__":
     # Load model for server-side parameter initialization
@@ -39,11 +48,12 @@ if __name__ == "__main__":
         evaluate_metrics_aggregation_fn=weighted_average,
         initial_parameters=parameters_init,
         on_fit_config_fn=fit_config,
+        on_evaluate_config_fn=evaluate_config,
     )
 
     # Start Flower server
     fl.server.start_server(
         server_address="0.0.0.0:8080",
-        config=fl.server.ServerConfig(num_rounds=5),
+        config=fl.server.ServerConfig(num_rounds=4),
         strategy=strategy,
     )

@@ -28,7 +28,7 @@ class Generator(nn.Module):
 
     def __init__(self,latent_dim = 100):
         super(Generator,self).__init__()
-
+        self.latent_dim = latent_dim
         self.gen =  nn.Sequential(
                             nn.Linear(latent_dim, 256),
                             nn.LeakyReLU(0.2),
