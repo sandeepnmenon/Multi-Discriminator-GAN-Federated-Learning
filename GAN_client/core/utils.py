@@ -13,16 +13,16 @@ def scale_image(img):
     out = (img + 1) / 2
     return out
     
-def load_gan():
+def load_gan(lr=0.0002):
     generator = Generator(latent_dim=100)
     discriminator = Discriminator()
 
     # optimizes parameters only in G model
     g_optimizer = optim.Adam(
-        generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        generator.parameters(), lr=lr, betas=(0.5, 0.999))
 
     d_optimizer = optim.Adam(
-        discriminator.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
 
     return generator, discriminator, g_optimizer, d_optimizer
 

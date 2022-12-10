@@ -9,7 +9,8 @@ import flwr as fl
 from flwr.common import Metrics
 from GAN_client.core.utils import load_gan, get_combined_gan_params, generate_images
 
-
+NUM_IMAGES = 10000
+NUM_ROUNDS = 200
 
 # Define metric aggregation function
 def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
@@ -48,6 +49,8 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, num_images: 
         config: Dict[str, fl.common.Scalar],
     ) -> Optional[Tuple[float, Dict[str, fl.common.Scalar]]]:
 
+        if server_round < 0.9*NUM_ROUNDS:
+            return 1.0, {"accuracy": 1.0}
         eval_dir = f"GAN_server/gan_images/{server_round}"
         if not os.path.exists(eval_dir):
             os.makedirs(eval_dir)
@@ -87,7 +90,7 @@ if __name__ == "__main__":
     strategy = fl.server.strategy.FedAvg(
         evaluate_metrics_aggregation_fn=weighted_average,
         initial_parameters=parameters_init,
-        evaluate_fn=get_evaluate_fn(generator, discriminator, num_images=100),
+        evaluate_fn=get_evaluate_fn(generator, discriminator, num_images=NUM_IMAGES),
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,
     )
@@ -95,6 +98,6 @@ if __name__ == "__main__":
     # Start Flower server
     fl.server.start_server(
         server_address="0.0.0.0:8080",
-        config=fl.server.ServerConfig(num_rounds=4),
+        config=fl.server.ServerConfig(num_rounds=NUM_ROUNDS),
         strategy=strategy,
     )
