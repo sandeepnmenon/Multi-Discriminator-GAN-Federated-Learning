@@ -38,14 +38,13 @@ combined_model = combined_model.to(DEVICE)
 
 # Define Flower client
 class FlowerClient(fl.client.NumPyClient):
-    def __init__(self, generator, discriminator, g_optimiser, d_optimiser, dataloader, client_id, epochs=1) -> None:
+    def __init__(self, generator, discriminator, g_optimiser, d_optimiser, dataloader, client_id) -> None:
         self.generator = generator
         self.discriminator = discriminator
         self.g_optimiser = g_optimiser
         self.d_optimiser = d_optimiser
         self.dataloader = dataloader
         self.batch_size = dataloader.batch_size
-        self.epochs = epochs
         self.client_id = client_id
         self.shape = (1, 28, 28)
         self.use_fedbn = USE_FEDBN
@@ -70,8 +69,9 @@ class FlowerClient(fl.client.NumPyClient):
 
 
     def fit(self, parameters, config):
+        local_epochs = config["local_epochs"]
         self.set_parameters(parameters, is_fedbn=self.use_fedbn)
-        self.generator, self.discriminator = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, self.epochs, self.client_id)
+        self.generator, self.discriminator = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, local_epochs, self.client_id)
 
         return self.get_parameters(config={}), len(self.dataloader.dataset), {}
 
@@ -80,9 +80,9 @@ class FlowerClient(fl.client.NumPyClient):
         self.set_parameters(parameters)
         num_images = config["num_eval_images"]
 
-        fake_images, g_loss = generate_images(self.generator, self.discriminator, num_images, self.shape)
+        # fake_images, g_loss = generate_images(self.generator, self.discriminator, num_images, self.shape)
         
-        return g_loss.item(), num_images, {"accuracy": 1.0}
+        return 0.0, num_images, {"accuracy": 1.0}
 
 
 if __name__ == "__main__":
@@ -90,10 +90,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mnist-classes", type=str, default=None)
     parser.add_argument("--client-id", type=str, default=0)
-    parser.add_argument("--epochs", type=int, default=2)
 
     args = parser.parse_args()
-    epochs = args.epochs
 
     # looks weird, but makes pixel values between -1 and +1
     # assume they are transformed from (0, 1)
@@ -129,7 +127,7 @@ if __name__ == "__main__":
     generator, discriminator, g_optimiser, d_optimiser = load_gan()
 
     flower_client = FlowerClient(
-        generator, discriminator, g_optimiser, d_optimiser, data_loader, epochs=epochs, client_id=args.client_id)
+        generator, discriminator, g_optimiser, d_optimiser, data_loader, client_id=args.client_id)
     # Start Flower client
     fl.client.start_numpy_client(server_address="127.0.0.1:8080",client=flower_client)
 

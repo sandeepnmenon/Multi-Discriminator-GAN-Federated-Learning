@@ -25,7 +25,7 @@ def fit_config(server_round: int):
     """Return training configuration dict for each round."""
     config = {
         "current_round": server_round,
-        "local_epochs": 2,
+        "local_epochs": 1,
     }
     return config
 
