@@ -15,6 +15,16 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
     # Aggregate and return custom metric (weighted average)
     return {"accuracy": sum(accuracies) / sum(examples)}
 
+
+def fit_config(server_round: int):
+    """Return training configuration dict for each round."""
+    config = {
+        "current_round": server_round,
+        "local_epochs": 2,
+    }
+    return config
+
+
 if __name__ == "__main__":
     # Load model for server-side parameter initialization
     generator, discriminator, g_optimizer, d_optimizer = load_gan()
@@ -27,7 +37,8 @@ if __name__ == "__main__":
     # Define strategy
     strategy = fl.server.strategy.FedAvg(
         evaluate_metrics_aggregation_fn=weighted_average,
-        initial_parameters=parameters_init
+        initial_parameters=parameters_init,
+        on_fit_config_fn=fit_config,
     )
 
     # Start Flower server
