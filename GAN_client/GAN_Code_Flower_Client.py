@@ -16,7 +16,7 @@ import numpy as np
 import torchvision
 
 from core.models import Generator, Discriminator, G_D_Assemble
-from core.utils import load_gan, get_combined_gan_params, train_gan, scale_image
+from core.utils import load_gan, get_combined_gan_params, train_gan, scale_image, generate_images
 
 # #############################################################################
 # 1. Regular PyTorch pipeline: nn.Module, train, test, and DataLoader
@@ -47,6 +47,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.batch_size = dataloader.batch_size
         self.epochs = epochs
         self.client_id = client_id
+        self.shape = (1, 28, 28)
         self.use_fedbn = USE_FEDBN
 
     def get_parameters(self, config):
@@ -77,22 +78,10 @@ class FlowerClient(fl.client.NumPyClient):
     def evaluate(self, parameters, config):
         # TODO: implement evaluation
         self.set_parameters(parameters)
-
-        latent_dim = self.generator.latent_dim
         num_images = config["num_eval_images"]
-        noise = torch.randn(num_images, latent_dim).to(DEVICE)
-        self.generator.eval()
-        self.discriminator.eval()
-        with torch.no_grad():
-            fake_images = self.generator(noise)
-            fake_outputs = self.discriminator(fake_images)
-            g_loss = F.binary_cross_entropy_with_logits(fake_outputs, torch.ones_like(fake_outputs))
 
-
-        fake_images = fake_images.reshape(-1, 1, 28, 28)
-        save_image(scale_image(fake_images), f"gan_images/client_{self.client_id}.png")
-
-
+        fake_images, g_loss = generate_images(self.generator, self.discriminator, num_images, self.shape)
+        
         return g_loss.item(), num_images, {"accuracy": 1.0}
 
 

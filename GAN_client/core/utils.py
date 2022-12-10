@@ -2,6 +2,7 @@ import os
 import torch
 import torch.optim as optim
 import torch.nn as nn
+import torch.nn.functional as F
 
 from torchvision.utils import save_image
 
@@ -142,3 +143,24 @@ def train_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epochs, c
         save_image(scale_image(fake_images_to_save), f"gan_images/client_{client_id}_{epoch+1}.png")
 
     return G, D
+
+
+def generate_images(G, D, num_images, shape=(1, 28, 28)):
+    latent_dim = G.latent_dim
+    # Get the device of the generator
+    device = next(G.parameters()).device
+
+    noise = torch.randn(num_images, latent_dim).to(device)
+    G.eval()
+    D.eval()
+    with torch.no_grad():
+        fake_images = G(noise)
+        fake_outputs = D(fake_images)
+
+        g_loss = F.binary_cross_entropy_with_logits(fake_outputs, torch.ones_like(fake_outputs))
+
+    fake_images = fake_images.reshape(-1, shape[0], shape[1], shape[2])
+
+    return scale_image(fake_images), g_loss
+
+
