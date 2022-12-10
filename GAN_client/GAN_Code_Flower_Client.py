@@ -24,7 +24,7 @@ from core.utils import load_gan, get_combined_gan_params, train_gan
 
 warnings.filterwarnings("ignore", category=UserWarning)
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+USE_FEDBN = True
 
 # Create models and load state_dicts
 discriminator = Discriminator()
@@ -47,24 +47,29 @@ class FlowerClient(fl.client.NumPyClient):
         self.batch_size = dataloader.batch_size
         self.epochs = epochs
         self.client_id = client_id
+        self.use_fedbn = USE_FEDBN
 
     def get_parameters(self, config):
-        return get_combined_gan_params(self.generator, self.discriminator)
+        return get_combined_gan_params(self.generator, self.discriminator, self.use_fedbn)
 
-    def set_parameters(self, parameters):
-        len_gparam = len([val.cpu().numpy() for _, val in self.generator.state_dict().items()])
+    def set_parameters(self, parameters, is_fedbn=False):
+        len_gparam = len([val.cpu().numpy() for name, val in self.generator.state_dict().items()])
 
         params_dict = zip(self.generator.state_dict().keys(), parameters[:len_gparam])
         gstate_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
         params_dict = zip(self.discriminator.state_dict().keys(), parameters[len_gparam:])
         dstate_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
 
+        if is_fedbn:
+            gstate_dict = {k: v for k, v in gstate_dict.items() if 'bn' not in k}
+            dstate_dict = {k: v for k, v in dstate_dict.items() if 'bn' not in k}
+
         self.generator.load_state_dict(gstate_dict, strict=False)
         self.discriminator.load_state_dict(dstate_dict, strict=False)
 
 
     def fit(self, parameters, config):
-        self.set_parameters(parameters)
+        self.set_parameters(parameters, is_fedbn=self.use_fedbn)
         self.generator, self.discriminator = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, self.epochs, self.client_id)
 
         return self.get_parameters(config={}), len(self.dataloader.dataset), {}

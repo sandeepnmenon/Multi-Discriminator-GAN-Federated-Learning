@@ -22,11 +22,15 @@ def load_gan():
     return generator, discriminator, g_optimizer, d_optimizer
 
 
-def get_combined_gan_params(generator, discriminator):
-    g_weights = [val.cpu().numpy()
-                 for _, val in generator.state_dict().items()]
-    d_weights = [val.cpu().numpy()
-                 for _, val in discriminator.state_dict().items()]
+def get_combined_gan_params(generator, discriminator, fedbn=False):
+    if fedbn:
+        g_weights = [val.cpu().numpy() for name, val in generator.state_dict().items() if "bn" not in name]
+        d_weights = [val.cpu().numpy() for name, val in discriminator.state_dict().items() if "bn" not in name]
+    else:
+        g_weights = [val.cpu().numpy()
+                    for _, val in generator.state_dict().items()]
+        d_weights = [val.cpu().numpy()
+                    for _, val in discriminator.state_dict().items()]
     combined_weights = g_weights + d_weights
 
     return combined_weights
@@ -132,7 +136,6 @@ def train_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epochs, c
 
         # PyTorch has a function to save a batch of images to file
         fake_images_to_save = fake_images_to_save.reshape(-1, 1, 28, 28)
-        print(fake_images_to_save.shape)
         save_image(scale_image(fake_images_to_save), f"gan_images/client_{client_id}_{epoch+1}.png")
 
     return G, D
