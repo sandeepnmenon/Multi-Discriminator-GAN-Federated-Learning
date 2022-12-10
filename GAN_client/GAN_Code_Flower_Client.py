@@ -38,7 +38,7 @@ combined_model = combined_model.to(DEVICE)
 
 # Define Flower client
 class FlowerClient(fl.client.NumPyClient):
-    def __init__(self, generator, discriminator, g_optimiser, d_optimiser, dataloader, epochs=1) -> None:
+    def __init__(self, generator, discriminator, g_optimiser, d_optimiser, dataloader, client_id, epochs=1) -> None:
         self.generator = generator
         self.discriminator = discriminator
         self.g_optimiser = g_optimiser
@@ -46,6 +46,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.dataloader = dataloader
         self.batch_size = dataloader.batch_size
         self.epochs = epochs
+        self.client_id = client_id
 
     def get_parameters(self, config):
         return get_combined_gan_params(self.generator, self.discriminator)
@@ -64,17 +65,26 @@ class FlowerClient(fl.client.NumPyClient):
 
     def fit(self, parameters, config):
         self.set_parameters(parameters)
-        self.generator, self.discriminator = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, self.epochs)
+        self.generator, self.discriminator = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, self.epochs, self.client_id)
 
         return self.get_parameters(config={}), len(self.dataloader.dataset), {}
 
     def evaluate(self, parameters, config):
+        # TODO: implement evaluation
         self.set_parameters(parameters)
 
         return 0.5, 100, {"accuracy": 1.0}
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mnist-classes", type=str, default=None)
+    parser.add_argument("--client-id", type=str, default=0)
+    parser.add_argument("--epochs", type=int, default=2)
+
+    args = parser.parse_args()
+    epochs = args.epochs
 
     # looks weird, but makes pixel values between -1 and +1
     # assume they are transformed from (0, 1)
@@ -90,8 +100,18 @@ if __name__ == "__main__":
         train=True,
         transform=transform,
         download=True)
+    mnist_classes = args.mnist_classes
+    if mnist_classes is not None:
+        mnist_classes = mnist_classes.split(",")
+        mnist_classes = [int(i) for i in mnist_classes]
 
-    len(train_dataset)
+        # Take images of classes mnist_classes
+        class_filter = train_dataset.targets == mnist_classes[0]
+        for i in range(1, len(mnist_classes)):
+            class_filter |= train_dataset.targets == mnist_classes[i]
+        train_dataset.data = train_dataset.data[class_filter]
+        train_dataset.targets = train_dataset.targets[class_filter]
+
 
     batch_size = 128
     data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
@@ -100,7 +120,7 @@ if __name__ == "__main__":
     generator, discriminator, g_optimiser, d_optimiser = load_gan()
 
     flower_client = FlowerClient(
-        generator, discriminator, g_optimiser, d_optimiser, data_loader, epochs=2)
+        generator, discriminator, g_optimiser, d_optimiser, data_loader, epochs=epochs, client_id=args.client_id)
     # Start Flower client
     fl.client.start_numpy_client(server_address="127.0.0.1:8080",client=flower_client)
 
