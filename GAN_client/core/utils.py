@@ -139,8 +139,8 @@ def train_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epochs, c
             f"Epoch: {epoch}, d_loss: {d_loss.item()}, g_loss: {g_loss.item()}")
 
         # PyTorch has a function to save a batch of images to file
-        fake_images_to_save = fake_images_to_save.reshape(-1, 1, 28, 28)
-        save_image(scale_image(fake_images_to_save), f"gan_images/client_{client_id}_{epoch+1}.png")
+        # fake_images_to_save = fake_images_to_save.reshape(-1, 1, 28, 28)
+        # save_image(scale_image(fake_images_to_save), f"gan_images/client_{client_id}_{epoch+1}.png")
 
     return G, D
 

@@ -51,6 +51,7 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, num_images: 
 
         if server_round < 0.9*NUM_ROUNDS:
             return 1.0, {"accuracy": 1.0}
+        print("Server Round: ", server_round)
         eval_dir = f"GAN_server/gan_images/{server_round}"
         if not os.path.exists(eval_dir):
             os.makedirs(eval_dir)
@@ -78,6 +79,11 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, num_images: 
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--num_images", type=int, default=NUM_IMAGES)
+    parser.add_argument("--num_rounds", type=int, default=NUM_ROUNDS)
+    args = parser.parse_args()
     # Load model for server-side parameter initialization
     generator, discriminator, g_optimizer, d_optimizer = load_gan()
     # Get pytorch model weights as a list of NumPy ndarray's
@@ -90,7 +96,7 @@ if __name__ == "__main__":
     strategy = fl.server.strategy.FedAvg(
         evaluate_metrics_aggregation_fn=weighted_average,
         initial_parameters=parameters_init,
-        evaluate_fn=get_evaluate_fn(generator, discriminator, num_images=NUM_IMAGES),
+        evaluate_fn=get_evaluate_fn(generator, discriminator, num_images=args.num_images),
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,
     )
@@ -98,6 +104,6 @@ if __name__ == "__main__":
     # Start Flower server
     fl.server.start_server(
         server_address="0.0.0.0:8080",
-        config=fl.server.ServerConfig(num_rounds=NUM_ROUNDS),
+        config=fl.server.ServerConfig(num_rounds=args.num_rounds),
         strategy=strategy,
     )

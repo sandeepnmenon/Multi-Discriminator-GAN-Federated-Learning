@@ -90,6 +90,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mnist-classes", type=str, default=None)
     parser.add_argument("--client-id", type=str, default=0)
+    parser.add_argument("--non-iid", type=int, default=None)
 
     args = parser.parse_args()
 
@@ -118,6 +119,14 @@ if __name__ == "__main__":
             class_filter |= train_dataset.targets == mnist_classes[i]
         train_dataset.data = train_dataset.data[class_filter]
         train_dataset.targets = train_dataset.targets[class_filter]
+    elif args.non_iid is not None:
+        # Load from npz file
+        data_file = "../MNIST/noniid/train/{}.npz".format(args.non_iid)
+        with open(data_file, 'rb') as f:
+            data = np.load(f, allow_pickle=True)['data'].tolist()
+
+        train_dataset.data = torch.from_numpy(data["x"]).squeeze()
+        train_dataset.targets = torch.from_numpy(data["y"]).squeeze()
 
 
     batch_size = 128
