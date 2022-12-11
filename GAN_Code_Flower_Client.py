@@ -17,6 +17,13 @@ import numpy as np
 import torchvision
 
 
+#### custom imports #######
+
+from model_utils import load_gan
+
+#### custom imports #######
+
+
 # #############################################################################
 # 1. Regular PyTorch pipeline: nn.Module, train, test, and DataLoader
 # #############################################################################
@@ -217,30 +224,76 @@ def train_gan(G,D, combined_model, data_loader, batch_size,epochs):
         fake_images = fake_images.reshape(-1, 1, 28, 28)
         save_image(scale_image(fake_images), f"gan_images/{epoch+1}.png")
 
-# Create models and load state_dicts    
-discriminator = Discriminator()
-generator = Generator(latent_dim=100)
+# Create models     
+generator, discriminator, g_optimizer, d_optimizer, criterion = load_gan()  
 
 
-combined_model = G_D_Assemble(generator, discriminator)
 
-combined_model = combined_model.to(DEVICE)
+def train_discriminator_one_step(discriminator, d_optimizer , fake_images, real_images,batch_size,criterion=criterion):
+
+    latent_dim = 100
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    discriminator.to(device)
+
+    # labels to use in the loop
+    ones_ = torch.ones(batch_size, 1).to(device)
+    zeros_ = torch.zeros(batch_size, 1).to(device)
+
+
+    # reshape and move to GPU
+    n = real_images.size(0)
+    inputs = real_images.reshape(n, 784).to(device) #(-1,784 ) also works
+
+    # set ones and zeros to correct size
+    ones = ones_[:n]
+    zeros = zeros_[:n]
+
+
+    ###########################
+    ### Train discriminator ###
+    ###########################
+
+    # real images
+    real_outputs = discriminator(inputs)
+    d_loss_real = criterion(real_outputs, ones)
+
+    # fake images
+    noise = torch.randn(n, latent_dim).to(device)
+    fake_images = fake_images.to(device)
+    fake_outputs = discriminator(fake_images)
+    d_loss_fake = criterion(fake_outputs, zeros)
+
+    # gradient descent step
+    d_loss = 0.5 * (d_loss_real + d_loss_fake)
+    d_optimizer.zero_grad()
+    g_optimizer.zero_grad()
+    d_loss.backward()
+    d_optimizer.step()
 
 
 
 # Define Flower client
 class FlowerClient(fl.client.NumPyClient):
     def get_parameters(self, config):
-        return [val.cpu().numpy() for _, val in combined_model.state_dict().items()]
+        return [val.cpu().numpy() for _, val in discriminator.state_dict().items()]
 
     def set_parameters(self, parameters):
-        params_dict = zip(combined_model.state_dict().keys(), parameters)
+        params_dict = zip(discriminator.state_dict().keys(), parameters)
         state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
-        combined_model.load_state_dict(state_dict, strict=True)
+        discriminator.load_state_dict(state_dict, strict=True)
 
     def fit(self, parameters, config):
         self.set_parameters(parameters)
-        train_gan(generator,discriminator, combined_model, data_loader, batch_size,epochs=1)
+
+        fake_images = torch.Tensor(np.array(eval(config["fake_images"])))   
+
+        real_images,_ = next(iter(data_loader))
+
+        batch_size = config["batch_size"]
+
+        train_discriminator_one_step(discriminator, d_optimizer , fake_images, real_images,batch_size )
         return self.get_parameters(config={}), len(data_loader.dataset), {}
 
     def evaluate(self, parameters, config):
