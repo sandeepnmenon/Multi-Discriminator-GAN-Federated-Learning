@@ -25,8 +25,7 @@ GAN_server/
 mnist_final_splits/
 mnist_splits_noniid_clients_2
 Original_MNIST_Dataset
-mnist_splits_2_clients/
-
+mnist_splits_*/
 
 
 

@@ -116,7 +116,8 @@ class CustomFedAvg(Strategy):
         zeros_label = None,
         latent_dim_input = None,
         scale_image_func = None,
-        original_dataset_path = None
+        original_dataset_path = None,
+        experiment_name = None,
         
         ##################################################
         ## Adding additonal parameters for GAN Training ##
@@ -198,6 +199,7 @@ class CustomFedAvg(Strategy):
         self.latent_dim_input = latent_dim_input
         self.scale_image_func = scale_image_func
         self.original_dataset_path = original_dataset_path
+        self.experiment_name = experiment_name
 
         ### Tracking variables #####
         self.current_epoch_no = 0 
@@ -347,8 +349,10 @@ class CustomFedAvg(Strategy):
         ###################################################################
 
         # Create a folder to store generated images
-        if not os.path.exists('Federated_images'):
-            os.makedirs('Federated_images')
+        dir_name = f'Federated_images_{self.experiment_name}'
+
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
 
         # # scale image back to (0, 1)
         # def scale_image(img):
@@ -403,12 +407,12 @@ class CustomFedAvg(Strategy):
 
             # PyTorch has a function to save a batch of images to file
             fake_images = fake_images.reshape(-1, 1, 28, 28)
-            save_image(self.scale_image_func(fake_images), f"Federated_images/{self.current_epoch_no}_generated_images.png")
+            save_image(self.scale_image_func(fake_images), os.path.join(dir_name,f"{self.current_epoch_no}_generated_images.png"))
 
 
         if (self.current_epoch_no % 10 == 0 and self.ite_num_in_ep == 0) or (self.current_epoch_no == 0 and self.ite_num_in_ep == 1) :
             
-            eval_dir = f"GAN_server/gan_images/fid_epoch_{self.current_epoch_no}"
+            eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}"
             if not os.path.exists(eval_dir):
                 os.makedirs(eval_dir)
 
@@ -432,7 +436,7 @@ class CustomFedAvg(Strategy):
 
             
 
-            command = "/home/laxman/idlsenv/bin/python3 -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+" > GAN_server/fid_results_"+ str(self.current_epoch_no) +".txt"
+            command = "/home/menonsandu/github/venv-torchsparse/bin/python3 -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")
@@ -441,7 +445,7 @@ class CustomFedAvg(Strategy):
 
         if self.current_epoch_no > 100 and self.g_loss_array[-1] < 0.8:
 
-            eval_dir = f"GAN_server/gan_images/fid_epoch_{self.current_epoch_no}_final"
+            eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}_final"
             if not os.path.exists(eval_dir):
                 os.makedirs(eval_dir)
 
@@ -461,7 +465,7 @@ class CustomFedAvg(Strategy):
                     save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
 
 
-            command = "/home/laxman/idlsenv/bin/python3 -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+" > GAN_server/fid_results_final"+ str(self.current_epoch_no) +".txt"
+            command = "/home/menonsandu/github/venv-torchsparse/bin/python3 -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_final"+ str(self.current_epoch_no) +".txt"
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")

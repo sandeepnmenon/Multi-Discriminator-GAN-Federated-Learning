@@ -30,6 +30,7 @@ if __name__ == "__main__":
     parser.add_argument("--original_dataset_path",  default=ORIGINAL_DATASET_PATH)
     parser.add_argument("--device",  default=DEVICE)
     parser.add_argument("--num_clients",  default=NUM_CLIENTS)
+    parser.add_argument("--experiment_name", type=str, default=None)
     args = parser.parse_args()
 
     # Load model for server-side parameter initialization
@@ -96,7 +97,8 @@ if __name__ == "__main__":
                             zeros_label = zeros_label,
                             latent_dim_input = latent_dim_input,
                             scale_image_func = scale_image_func,
-                            original_dataset_path = original_dataset_path)
+                            original_dataset_path = original_dataset_path,
+                            experiment_name=args.experiment_name)
 
     # Start Flower server
     fl.server.start_server(
