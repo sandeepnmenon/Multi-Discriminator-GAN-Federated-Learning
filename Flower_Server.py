@@ -7,103 +7,102 @@ from torchvision.utils import save_image
 
 import flwr as fl
 from flwr.common import Metrics
-from GAN_client.core.utils import load_gan, get_combined_gan_params, generate_images
-
-NUM_IMAGES = 1000
-NUM_ROUNDS = 200
-
-# Define metric aggregation function
-def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
-    # Multiply accuracy of each client by number of examples used
-    accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
-    examples = [num_examples for num_examples, _ in metrics]
-
-    # Aggregate and return custom metric (weighted average)
-    return {"accuracy": sum(accuracies) / sum(examples)}
+from GAN_client.core.utils import load_gan, scale_image
+from FL_Algorithms.CustomFedAvg import CustomFedAvg
+import math
 
 
-def fit_config(server_round: int):
-    """Return training configuration dict for each round."""
-    config = {
-        "current_round": server_round,
-        "local_epochs": 1,
-    }
-    return config
-
-def evaluate_config(server_round: int):
-    """Return evaluation configuration dict for each round.
-    Perform five local evaluation steps on each client (i.e., use five
-    batches) during rounds one to three, then increase to ten local
-    evaluation steps.
-    """
-
-    return {"num_eval_images": 100}
-
-def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, num_images: int):
-    """Return an evaluation function for server-side evaluation."""
-
-
-    def evaluate(
-        server_round: int,
-        parameters: fl.common.NDArrays,
-        config: Dict[str, fl.common.Scalar],
-    ) -> Optional[Tuple[float, Dict[str, fl.common.Scalar]]]:
-
-        if server_round >= 0.95*NUM_ROUNDS:
-            return 1.0, {"accuracy": 1.0}
-        print("Server Round: ", server_round)
-        eval_dir = f"GAN_server/gan_images/noniid2_{server_round}"
-        if not os.path.exists(eval_dir):
-            os.makedirs(eval_dir)
-        print(f"Server round {server_round}")
-        print("Config ", config)
-
-        len_gparam = len([val.cpu().numpy() for name, val in generator.state_dict().items()])
-
-        params_dict = zip(generator.state_dict().keys(), parameters[:len_gparam])
-        gstate_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
-        params_dict = zip(discriminator.state_dict().keys(), parameters[len_gparam:])
-        dstate_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
-
-        generator.load_state_dict(gstate_dict, strict=False)
-        discriminator.load_state_dict(dstate_dict, strict=False)
-
-        fake_images, loss = generate_images(generator, discriminator, num_images, shape=(1, 28, 28))
-        for i in range(1, num_images):
-            save_image(fake_images[i-1], os.path.join(eval_dir, f"{i}.png"))
-
-        return loss, {"accuracy": 1.0}
-
-    return evaluate
-
-
+BATCH_SIZE = 128
+DATASET_SIZE = 60000
+LATENT_DIM_INPUT = 100
+ORIGINAL_DATASET_PATH = "Original_MNIST_Dataset"
+TOTAL_NUM_ROUNDS = math.ceil(DATASET_SIZE/BATCH_SIZE)*200
+DEVICE = "cuda:0"
+NUM_CLIENTS = 2
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_images", type=int, default=NUM_IMAGES)
-    parser.add_argument("--num_rounds", type=int, default=NUM_ROUNDS)
-    args = parser.parse_args()
-    # Load model for server-side parameter initialization
-    generator, discriminator, g_optimizer, d_optimizer = load_gan()
-    # Get pytorch model weights as a list of NumPy ndarray's
-    combined_weights = get_combined_gan_params(generator, discriminator)
 
-    # Serialize weights to `Parameters`
-    parameters_init = fl.common.ndarrays_to_parameters(combined_weights)
+    parser.add_argument("--batch_size",  default=BATCH_SIZE)
+    parser.add_argument("--dataset_size",  default=DATASET_SIZE)
+    parser.add_argument("--latent_dim_input",  default=LATENT_DIM_INPUT)
+    parser.add_argument("--original_dataset_path",  default=ORIGINAL_DATASET_PATH)
+    parser.add_argument("--device",  default=DEVICE)
+    parser.add_argument("--num_clients",  default=NUM_CLIENTS)
+    args = parser.parse_args()
+
+    # Load model for server-side parameter initialization
+    Generator_model, Discriminator_model, generator_optimizer, discriminator_optimizer, criterion = load_gan()
+
+    # batch size
+    batch_size = eval(args.batch_size)
+
+    #device
+    device = args.device
+
+    # dataset_size
+    dataset_size = eval(args.dataset_size)
+
+    # labels
+    ones_label = torch.ones(batch_size, 1).to(device)
+    zeros_label = torch.zeros(batch_size, 1).to(device)
+
+    # latent dim size
+    latent_dim_input = eval(args.latent_dim_input)
+
+    # scale image func
+    scale_image_func = scale_image
+
+    # original_dataset_path
+    original_dataset_path = args.original_dataset_path
+
+
+
+    total_number_of_rounds = math.ceil(dataset_size/batch_size)*200
+
+    no_of_clients = eval(args.num_clients)
+
+
+    # Define metric aggregation function
+    def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
+        # Multiply accuracy of each client by number of examples used
+        accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
+        examples = [num_examples for num_examples, _ in metrics]
+
+        # Aggregate and return custom metric (weighted average)
+        return {"accuracy": sum(accuracies) / sum(examples)}
+
+    print(device)
+
 
     # Define strategy
-    strategy = fl.server.strategy.FedAvg(
-        evaluate_metrics_aggregation_fn=weighted_average,
-        initial_parameters=parameters_init,
-        evaluate_fn=get_evaluate_fn(generator, discriminator, num_images=args.num_images),
-        on_fit_config_fn=fit_config,
-        on_evaluate_config_fn=evaluate_config,
-    )
+    strategy = CustomFedAvg(
+                            fraction_fit = 1.0,
+                            fraction_evaluate = 1.0,
+                            min_fit_clients = no_of_clients,
+                            min_evaluate_clients = no_of_clients,
+                            min_available_clients = no_of_clients,
+                            evaluate_metrics_aggregation_fn=weighted_average,
+                            Generator_model = Generator_model,
+                            Discriminator_model = Discriminator_model,
+                            generator_optimizer = generator_optimizer,
+                            discriminator_optimizer = discriminator_optimizer,
+                            criterion = criterion,
+                            batch_size = batch_size,
+                            device = device,
+                            dataset_size = dataset_size,
+                            ones_label = ones_label,
+                            zeros_label = zeros_label,
+                            latent_dim_input = latent_dim_input,
+                            scale_image_func = scale_image_func,
+                            original_dataset_path = original_dataset_path)
 
     # Start Flower server
     fl.server.start_server(
         server_address="0.0.0.0:8080",
-        config=fl.server.ServerConfig(num_rounds=args.num_rounds),
+        config=fl.server.ServerConfig(num_rounds=total_number_of_rounds),
         strategy=strategy,
     )
+
+

@@ -16,7 +16,7 @@ import numpy as np
 import torchvision
 
 from core.models import Generator, Discriminator, G_D_Assemble
-from core.utils import load_gan, get_combined_gan_params, train_gan, scale_image, generate_images
+from core.utils import load_gan, get_combined_gan_params, train_gan, load_discriminator
 
 # #############################################################################
 # 1. Regular PyTorch pipeline: nn.Module, train, test, and DataLoader
@@ -26,119 +26,133 @@ warnings.filterwarnings("ignore", category=UserWarning)
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 USE_FEDBN = True
 
-# Create models and load state_dicts
-discriminator = Discriminator()
-generator = Generator(latent_dim=100)
+
+def train_discriminator_one_step(discriminator, d_optimizer , fake_images, real_images,batch_size,criterion):
+
+    latent_dim = 100
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    discriminator.to(device)
+
+    # labels to use in the loop
+    ones_ = torch.ones(batch_size, 1).to(device)
+    zeros_ = torch.zeros(batch_size, 1).to(device)
 
 
-combined_model = G_D_Assemble(generator, discriminator)
+    # reshape and move to GPU
+    # print(real_images.shape)
+    n = real_images.size(0)
+    inputs = real_images.reshape(n, 784).to(device) #(-1,784 ) also works
 
-combined_model = combined_model.to(DEVICE)
+    # set ones and zeros to correct size
+    ones = ones_[:n]
+    zeros = zeros_[:n]
+
+
+    ###########################
+    ### Train discriminator ###
+    ###########################
+
+    # real images
+    real_outputs = discriminator(inputs)
+    d_loss_real = criterion(real_outputs, ones)
+
+    # fake images
+    noise = torch.randn(n, latent_dim).to(device)
+    fake_images = fake_images.to(device)
+    fake_outputs = discriminator(fake_images)
+    d_loss_fake = criterion(fake_outputs, zeros)
+
+    # gradient descent step
+    d_loss = 0.5 * (d_loss_real + d_loss_fake)
+    d_optimizer.zero_grad()
+    d_loss.backward()
+    d_optimizer.step()
 
 
 # Define Flower client
+# Define Flower client
 class FlowerClient(fl.client.NumPyClient):
-    def __init__(self, generator, discriminator, g_optimiser, d_optimiser, dataloader, client_id) -> None:
-        self.generator = generator
+
+    def __init__(self, discriminator, d_optimizer, criterion, batch_size ,dataloader, client_id) -> None:
         self.discriminator = discriminator
-        self.g_optimiser = g_optimiser
-        self.d_optimiser = d_optimiser
+        self.d_optimizer = d_optimizer
+        self.criterion = criterion
+
         self.dataloader = dataloader
-        self.batch_size = dataloader.batch_size
+        self.batch_size = batch_size
         self.client_id = client_id
-        self.shape = (1, 28, 28)
-        self.use_fedbn = USE_FEDBN
-
+        
+    
     def get_parameters(self, config):
-        return get_combined_gan_params(self.generator, self.discriminator, self.use_fedbn)
+        return [val.cpu().numpy() for _, val in self.discriminator.state_dict().items()]
 
-    def set_parameters(self, parameters, is_fedbn=False):
-        len_gparam = len([val.cpu().numpy() for name, val in self.generator.state_dict().items()])
-
-        params_dict = zip(self.generator.state_dict().keys(), parameters[:len_gparam])
-        gstate_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
-        params_dict = zip(self.discriminator.state_dict().keys(), parameters[len_gparam:])
-        dstate_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
-
-        if is_fedbn:
-            gstate_dict = {k: v for k, v in gstate_dict.items() if 'bn' not in k}
-            dstate_dict = {k: v for k, v in dstate_dict.items() if 'bn' not in k}
-
-        self.generator.load_state_dict(gstate_dict, strict=False)
-        self.discriminator.load_state_dict(dstate_dict, strict=False)
-
+    def set_parameters(self, parameters):
+        params_dict = zip(self.discriminator.state_dict().keys(), parameters)
+        state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
+        self.discriminator.load_state_dict(state_dict, strict=True)
 
     def fit(self, parameters, config):
-        local_epochs = config["local_epochs"]
-        server_round = config["current_round"]
-        self.set_parameters(parameters, is_fedbn=self.use_fedbn)
-        self.generator, self.discriminator, g_loss = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, local_epochs, self.client_id)
+        self.set_parameters(parameters)
 
-        return self.get_parameters(config), len(self.dataloader.dataset), {"g_loss": g_loss}
+        fake_images = torch.Tensor(np.array(eval(config["fake_images"])))   
+
+        real_images,_ = next(iter(self.dataloader))
+
+        batch_size = self.batch_size
+
+        train_discriminator_one_step(self.discriminator, self.d_optimizer , fake_images, real_images,batch_size,self.criterion)
+        return self.get_parameters(config={}), len(self.dataloader.dataset), {}
 
     def evaluate(self, parameters, config):
-        # TODO: implement evaluation
         self.set_parameters(parameters)
-        num_images = config["num_eval_images"]
-
-        # fake_images, g_loss = generate_images(self.generator, self.discriminator, num_images, self.shape)
-        
-        return 0.0, num_images, {"accuracy": 1.0}
+    
+        return 0.5, 100, {"accuracy": 1.0}
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mnist-classes", type=str, default=None)
-    parser.add_argument("--client-id", type=str, default=0)
-    parser.add_argument("--num-clients", type=int, default=None)
+    parser.add_argument("--client_id", type=str, default=0)
+    parser.add_argument("--dataset_path",type=str, default=None)
+    parser.add_argument("--batch_size",type=str, default=None)
 
     args = parser.parse_args()
+
+    ###########################
+    ### Compose Transforms ####
+    ###########################
 
     # looks weird, but makes pixel values between -1 and +1
     # assume they are transformed from (0, 1)
     # min value = (0 - 0.5) / 0.5 = -1
     # max value = (1 - 0.5) / 0.5 = +1
     transform = transforms.Compose([
+        transforms.Grayscale(),
         transforms.ToTensor(),
         transforms.Normalize(mean=(0.5,),
-                             std=(0.5,))])
+                            std=(0.5,))])
 
-    train_dataset = torchvision.datasets.MNIST(
-        root='.',
-        train=True,
+
+    train_dataset = torchvision.datasets.ImageFolder(
+        root=args.dataset_path,
         transform=transform,
-        download=True)
-    mnist_classes = args.mnist_classes
-    if mnist_classes is not None:
-        mnist_classes = mnist_classes.split(",")
-        mnist_classes = [int(i) for i in mnist_classes]
+        )
 
-        # Take images of classes mnist_classes
-        class_filter = train_dataset.targets == mnist_classes[0]
-        for i in range(1, len(mnist_classes)):
-            class_filter |= train_dataset.targets == mnist_classes[i]
-        train_dataset.data = train_dataset.data[class_filter]
-        train_dataset.targets = train_dataset.targets[class_filter]
-    elif args.num_clients is not None:
-        # Load from npz file
-        data_file = f"../MNIST/noniid-{args.num_clients}/train_clients_{args.num_clients}/{args.client_id}.npz"
-        print(f"Loading data from {data_file}")
-        with open(data_file, 'rb') as f:
-            data = np.load(f, allow_pickle=True)['data'].tolist()
-
-        train_dataset.data = torch.from_numpy(data["x"]).squeeze()
-        train_dataset.targets = torch.from_numpy(data["y"]).squeeze()
-
-
-    batch_size = 128
+    batch_size = eval(args.batch_size)
     data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                              batch_size=batch_size,
-                                              shuffle=True)
-    generator, discriminator, g_optimiser, d_optimiser = load_gan()
+                                            batch_size=batch_size, 
+                                            shuffle=True)
 
-    flower_client = FlowerClient(
-        generator, discriminator, g_optimiser, d_optimiser, data_loader, client_id=args.client_id)
+    ###########################
+    ### Compose Transforms ####
+    ###########################
+
+    # Create models     
+    discriminator, d_optimizer, criterion = load_discriminator()  
+
+    flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) )
     # Start Flower client
     fl.client.start_numpy_client(server_address="127.0.0.1:8080",client=flower_client)
 

@@ -13,8 +13,8 @@ def scale_image(img):
     out = (img + 1) / 2
     return out
     
-def load_gan(lr=0.0002):
-    generator = Generator(latent_dim=100)
+def load_gan(lr=0.0002,latent_dim = 100):
+    generator = Generator(latent_dim=latent_dim)
     discriminator = Discriminator()
 
     # optimizes parameters only in G model
@@ -24,7 +24,36 @@ def load_gan(lr=0.0002):
     d_optimizer = optim.Adam(
         discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
 
-    return generator, discriminator, g_optimizer, d_optimizer
+    # Loss and optimizers
+    criterion = nn.BCEWithLogitsLoss()
+
+    return generator, discriminator, g_optimizer, d_optimizer,criterion
+
+
+def load_discriminator(lr=0.0002):
+    discriminator = Discriminator()
+
+    d_optimizer = optim.Adam(
+        discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    # Loss and optimizers
+    criterion = nn.BCEWithLogitsLoss()
+
+    return  discriminator, d_optimizer,criterion
+
+def load_generator(lr=0.0002,latent_dim = 100):
+
+
+    generator = Generator(latent_dim=latent_dim)
+
+    # optimizes parameters only in G model
+    g_optimizer = optim.Adam(
+        generator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    # Loss and optimizers
+    criterion = nn.BCEWithLogitsLoss()
+
+    return generator, g_optimizer, criterion
 
 
 def get_combined_gan_params(generator, discriminator, fedbn=False):
