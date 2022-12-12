@@ -9,7 +9,7 @@ import flwr as fl
 from flwr.common import Metrics
 from GAN_client.core.utils import load_gan, get_combined_gan_params, generate_images
 
-NUM_IMAGES = 10000
+NUM_IMAGES = 1000
 NUM_ROUNDS = 200
 
 # Define metric aggregation function
@@ -49,14 +49,14 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, num_images: 
         config: Dict[str, fl.common.Scalar],
     ) -> Optional[Tuple[float, Dict[str, fl.common.Scalar]]]:
 
-        if server_round < 0.9*NUM_ROUNDS:
+        if server_round >= 0.95*NUM_ROUNDS:
             return 1.0, {"accuracy": 1.0}
         print("Server Round: ", server_round)
-        eval_dir = f"GAN_server/gan_images/{server_round}"
+        eval_dir = f"GAN_server/gan_images/noniid2_{server_round}"
         if not os.path.exists(eval_dir):
             os.makedirs(eval_dir)
         print(f"Server round {server_round}")
-        print(config)
+        print("Config ", config)
 
         len_gparam = len([val.cpu().numpy() for name, val in generator.state_dict().items()])
 

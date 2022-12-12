@@ -142,7 +142,7 @@ def train_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epochs, c
         # fake_images_to_save = fake_images_to_save.reshape(-1, 1, 28, 28)
         # save_image(scale_image(fake_images_to_save), f"gan_images/client_{client_id}_{epoch+1}.png")
 
-    return G, D
+    return G, D, g_loss.item()
 
 
 def generate_images(G, D, num_images, shape=(1, 28, 28)):

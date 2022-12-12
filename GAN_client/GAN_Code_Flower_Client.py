@@ -70,10 +70,11 @@ class FlowerClient(fl.client.NumPyClient):
 
     def fit(self, parameters, config):
         local_epochs = config["local_epochs"]
+        server_round = config["current_round"]
         self.set_parameters(parameters, is_fedbn=self.use_fedbn)
-        self.generator, self.discriminator = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, local_epochs, self.client_id)
+        self.generator, self.discriminator, g_loss = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, local_epochs, self.client_id)
 
-        return self.get_parameters(config={}), len(self.dataloader.dataset), {}
+        return self.get_parameters(config), len(self.dataloader.dataset), {"g_loss": g_loss}
 
     def evaluate(self, parameters, config):
         # TODO: implement evaluation
@@ -90,7 +91,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mnist-classes", type=str, default=None)
     parser.add_argument("--client-id", type=str, default=0)
-    parser.add_argument("--non-iid", type=int, default=None)
+    parser.add_argument("--num-clients", type=int, default=None)
 
     args = parser.parse_args()
 
@@ -119,9 +120,10 @@ if __name__ == "__main__":
             class_filter |= train_dataset.targets == mnist_classes[i]
         train_dataset.data = train_dataset.data[class_filter]
         train_dataset.targets = train_dataset.targets[class_filter]
-    elif args.non_iid is not None:
+    elif args.num_clients is not None:
         # Load from npz file
-        data_file = "../MNIST/noniid/train/{}.npz".format(args.non_iid)
+        data_file = f"../MNIST/noniid-{args.num_clients}/train_clients_{args.num_clients}/{args.client_id}.npz"
+        print(f"Loading data from {data_file}")
         with open(data_file, 'rb') as f:
             data = np.load(f, allow_pickle=True)['data'].tolist()
 
