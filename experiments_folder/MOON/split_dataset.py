@@ -40,9 +40,29 @@ logs_dir = args.logs_dir
 if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
 
+main_dir = "../../Original_MNIST_Dataset"
+
+
+
 
 X_train, y_train, X_test, y_test, net_dataidx_map, traindata_cls_counts = partition_data(
         args.dataset, args.dir_download, args.logs_dir, args.split_type, eval(args.num_clients), beta=eval(args.beta_value) )
+
+
+for key in net_dataidx_map.keys():
+
+        curr_dir_name = main_dir
+        if not os.path.exists(curr_dir_name):
+                os.makedirs(curr_dir_name)
+
+        for id in range(0,np.array(net_dataidx_map[key]).shape[0]):
+
+
+                if args.dataset == "mnist":
+                        im = Image.fromarray(X_train[net_dataidx_map[key][id]].cpu().detach().numpy())
+                else:
+                        im = Image.fromarray(X_train[net_dataidx_map[key][id]])
+                im.save(f"{curr_dir_name}/{str(net_dataidx_map[key][id])}_img.png")
 
 
 
@@ -50,6 +70,8 @@ dir_to_store = args.result_directory+"/"
 
 # print(net_dataidx_map[0])
 # print(net_dataidx_map[1])
+
+
 
 
 for key in net_dataidx_map.keys():
