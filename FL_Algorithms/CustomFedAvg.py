@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 import flwr as fl
 from flwr.common import Metrics
-
+import shutil
 
 ###########################################################
 ### import statements for custom FedAvg to train GANs #####
@@ -440,6 +440,8 @@ class CustomFedAvg(Strategy):
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")
+            # Delete the folder gan_images
+            shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
 
             
 
@@ -469,7 +471,8 @@ class CustomFedAvg(Strategy):
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")
-
+            # Delete the folder gan_images
+            shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
 
             sys.exit()
              

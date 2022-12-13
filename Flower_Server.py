@@ -30,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument("--original_dataset_path",  default=ORIGINAL_DATASET_PATH)
     parser.add_argument("--device",  default=DEVICE)
     parser.add_argument("--num_clients",  default=NUM_CLIENTS)
-    parser.add_argument("--experiment_name", type=str, default=None)
+    parser.add_argument("--experiment_name", type=str, default='default')
     args = parser.parse_args()
 
     # Load model for server-side parameter initialization
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
     # Start Flower server
     fl.server.start_server(
-        server_address="0.0.0.0:8080",
+        server_address="127.0.0.1:8889",
         config=fl.server.ServerConfig(num_rounds=total_number_of_rounds),
         strategy=strategy,
     )
