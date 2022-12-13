@@ -154,5 +154,5 @@ if __name__ == "__main__":
 
     flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) )
     # Start Flower client
-    fl.client.start_numpy_client(server_address="127.0.0.1:8080",client=flower_client)
+    fl.client.start_numpy_client(server_address="127.0.0.1:8888",client=flower_client)
 
