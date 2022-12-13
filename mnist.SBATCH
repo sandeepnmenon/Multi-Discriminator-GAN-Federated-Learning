@@ -13,7 +13,7 @@ module purge
 module load anaconda3/2020.07
 eval "$(conda shell.bash hook)"
 conda activate idls
-cd /home/snm6477/Multi-Discriminator-GAN-Federated-Learning/
+cd /scratch/snm6477/Multi-Discriminator-GAN-Federated-Learning/
 
 ./run_mnist_exp.sh
 # python problem_4_env2.py

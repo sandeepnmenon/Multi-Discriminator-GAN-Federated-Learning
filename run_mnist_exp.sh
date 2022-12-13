@@ -14,8 +14,8 @@ for fold in ${folders[@]}; do
     num_clients=$(cut -d'_' -f3 <<< "$fold")
     echo "Number of clients: $num_clients"
 
-    cd experiments_folder/MOON
-    python split_dataset.py --dir_download ../current_dir --logs_dir ../logs --split_type iid --beta_value 0.1 --dataset mnist --num_clients ${num_clients} --result_directory ../../${fold}
+    # cd experiments_folder/MOON
+    # python split_dataset.py --dir_download ../current_dir --logs_dir ../logs --split_type iid --beta_value 0.1 --dataset mnist --num_clients ${num_clients} --result_directory ../../${fold}
 
     python Flower_Server.py --batch_size 128 --dataset_size 60000 --latent_dim_input 100 --original_dataset_path ./Original_MNIST_Dataset --device cuda:0 --num_clients ${num_clients} --experiment_name ${fold} &
     sleep 3  # Sleep to give the server enough time to start
@@ -23,6 +23,7 @@ for fold in ${folders[@]}; do
         echo "Starting client $i for ${fold}/client_${i}"
         python ./GAN_client/GAN_Code_Flower_Client.py --client_id ${i} --dataset_path ${fold}/client_${i} --batch_size 128 &
     done
+    wait
 done
 
 # Enable CTRL+C to stop all background processes
