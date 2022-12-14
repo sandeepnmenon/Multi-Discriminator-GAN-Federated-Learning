@@ -445,7 +445,7 @@ class CustomFedAvg(Strategy):
 
             
 
-        if self.current_epoch_no > 100 and self.g_loss_array[-1] < 0.8:
+        if self.current_epoch_no > 100 and self.ite_num_in_ep == 0:
 
             eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}_final"
             if not os.path.exists(eval_dir):
@@ -467,14 +467,12 @@ class CustomFedAvg(Strategy):
                     save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
 
 
-            command = "python -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_final"+ str(self.current_epoch_no) +".txt"
+            command = "python -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")
             # Delete the folder gan_images
             shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
-
-            sys.exit()
              
 
 
