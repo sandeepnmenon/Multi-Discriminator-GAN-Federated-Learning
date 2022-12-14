@@ -18,11 +18,11 @@ for fold in ${folders[@]}; do
     # cd experiments_folder/MOON
     # python split_dataset.py --dir_download ../current_dir --logs_dir ../logs --split_type iid --beta_value 0.1 --dataset mnist --num_clients ${num_clients} --result_directory ../../${fold}
 
-    python Flower_Server_basic.py --batch_size 128 --dataset_size 60000 --latent_dim_input 100 --original_dataset_path ./Original_MNIST_Dataset --device cuda:0 --num_clients ${num_clients} --experiment_name ${fold} &
+    python Flower_Server_basic.py --port 8889 --batch_size 128 --dataset_size 60000 --latent_dim_input 100 --original_dataset_path ./Original_MNIST_Dataset --device cuda:0 --num_clients ${num_clients} --experiment_name ${fold} &
     sleep 5  # Sleep to give the server enough time to start
     for i in `seq 1 $num_clients`; do
         echo "Starting client $i for ${fold}/client_${i}"
-        python ./GAN_client_basic/GAN_Code_Flower_Client.py --client_id ${i} --dataset_path ${fold}/client_${i} --batch_size 128 &
+        python ./GAN_client_basic/GAN_Code_Flower_Client.py --port 8889 --client_id ${i} --dataset_path ${fold}/client_${i} --batch_size 128 &
     done
     wait
 done
