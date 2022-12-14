@@ -1,3 +1,4 @@
+.ipynb_checkpoints/
 cifar-10-batches-py/
 data/
 gan_images/
@@ -27,5 +28,6 @@ mnist_splits_noniid_clients_2
 Original_MNIST_Dataset
 mnist_splits_*/
 *.out
-
+Federated_images_mnist*/
+GAN_server_mnist*/
 

@@ -117,6 +117,7 @@ if __name__ == "__main__":
     parser.add_argument("--client_id", type=str, default=0)
     parser.add_argument("--dataset_path",type=str, default=None)
     parser.add_argument("--batch_size",type=str, default=None)
+    parser.add_argument("--port",type=str, default=8889)
 
     args = parser.parse_args()
 
@@ -154,5 +155,5 @@ if __name__ == "__main__":
 
     flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) )
     # Start Flower client
-    fl.client.start_numpy_client(server_address="127.0.0.1:8889",client=flower_client)
+    fl.client.start_numpy_client(server_address=f"127.0.0.1:{args.port}",client=flower_client)
 
