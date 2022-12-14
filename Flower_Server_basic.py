@@ -11,6 +11,7 @@ from GAN_client_basic.core.utils import load_gan, scale_image, generate_images, 
 from FL_Algorithms.CustomFedAvg import CustomFedAvg
 import math
 import subprocess
+import shutil
 
 BATCH_SIZE = 128
 DATASET_SIZE = 60000
@@ -48,6 +49,7 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, original_dat
             return 1.0, {"accuracy": 1.0}
 
         eval_dir = f"GAN_server_{experiment_name}/gan_images/fid_epoch_{server_round}"
+        dir_name = f'Federated_images_{experiment_name}'
 
         if not os.path.exists(eval_dir):
             os.makedirs(eval_dir)
@@ -66,6 +68,8 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, original_dat
         discriminator.load_state_dict(dstate_dict, strict=False)
 
         fake_images, loss = generate_images(generator, discriminator, BATCH_SIZE, shape=(1, 28, 28))
+        save_image(fake_images, os.path.join(dir_name,f"{server_round}_generated_images.png"))
+
         for i in range(1, BATCH_SIZE):
             save_image(fake_images[i-1], os.path.join(eval_dir, f"{server_round}_{i}.png"))
 
@@ -74,6 +78,7 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, original_dat
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
         process.wait()
         print ("FID calculation success")
+        shutil.rmtree(eval_dir)
         
         return loss, {"accuracy": 1.0}
 
