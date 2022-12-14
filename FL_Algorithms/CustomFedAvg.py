@@ -436,7 +436,7 @@ class CustomFedAvg(Strategy):
 
             
 
-            command = "python -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
+            command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")
@@ -467,7 +467,7 @@ class CustomFedAvg(Strategy):
                     save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
 
 
-            command = "python -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
+            command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")
