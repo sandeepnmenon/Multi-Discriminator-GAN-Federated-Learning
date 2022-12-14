@@ -134,7 +134,7 @@ if __name__ == "__main__":
     # original_dataset_path
     original_dataset_path = args.original_dataset_path
     experiment_name = args.experiment_name
-    total_number_of_rounds = 10
+    total_number_of_rounds = 110
 
     no_of_clients = eval(args.num_clients)
 
