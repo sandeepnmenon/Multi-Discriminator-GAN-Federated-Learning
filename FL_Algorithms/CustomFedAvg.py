@@ -63,7 +63,7 @@ import subprocess
 
 
 # # Load model for server-side parameter initialization
-# generator, discriminator, g_optimizer, d_optimizer, criterion = load_gan()
+generator, discriminator, g_optimizer, d_optimizer, criterion = load_gan()
 
 
 # # Configuring device for training
@@ -74,7 +74,7 @@ import subprocess
 # discriminator = discriminator.to(device)
 
 # # Setting Batchsize
-# batch_size = 128
+batch_size = 128
 
 class CustomFedAvg(Strategy):
     """Configurable FedAvg strategy implementation."""
