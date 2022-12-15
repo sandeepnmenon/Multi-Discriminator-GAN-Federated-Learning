@@ -37,7 +37,7 @@ from flwr.server.strategy import Strategy
 ###########################################################
 ################# Custom GAN Imports #####################
 ###########################################################
-from GAN_client.core.utils import load_gan
+from GAN_client.core.utils import load_gan,load_cifar_gan
 import torch
 from collections import OrderedDict
 from torchvision.utils import save_image
@@ -63,7 +63,7 @@ import subprocess
 
 
 # # Load model for server-side parameter initialization
-generator, discriminator, g_optimizer, d_optimizer, criterion = load_gan()
+generator, discriminator, g_optimizer, d_optimizer, criterion = load_cifar_gan()
 
 
 # # Configuring device for training
@@ -118,6 +118,7 @@ class CustomFedAvg(Strategy):
         scale_image_func = None,
         original_dataset_path = None,
         experiment_name = None,
+        dataset_arg = None
         
         ##################################################
         ## Adding additonal parameters for GAN Training ##
@@ -200,6 +201,7 @@ class CustomFedAvg(Strategy):
         self.scale_image_func = scale_image_func
         self.original_dataset_path = original_dataset_path
         self.experiment_name = experiment_name
+        self.dataset_arg = dataset_arg
 
         ### Tracking variables #####
         self.current_epoch_no = 0 
@@ -268,15 +270,29 @@ class CustomFedAvg(Strategy):
         ########### Custom Code to train Generator ##############
         #########################################################
 
-        n = self.batch_size
-        latent_dim = self.latent_dim_input
+        if self.dataset_arg == "mnist":
 
-        # fake images
-        noise = torch.randn(n, latent_dim).to(self.device)
-        fake_images = self.Generator_model(noise)
+            n = self.batch_size
+            latent_dim = self.latent_dim_input
 
-        config["fake_images"] = str(fake_images.cpu().detach().numpy().tolist())
-        config["batch_size"]  = self.batch_size
+            # fake images
+            noise = torch.randn(n, latent_dim).to(self.device)
+            fake_images = self.Generator_model(noise)
+
+            config["fake_images"] = str(fake_images.cpu().detach().numpy().tolist())
+            config["batch_size"]  = self.batch_size
+
+        if self.dataset_arg == "cifar10":
+
+            n = self.batch_size
+            latent_dim = self.latent_dim_input
+
+            # fake images
+            noise = torch.randn(n, latent_dim,1,1).to(self.device)
+            fake_images = self.Generator_model(noise)
+
+            config["fake_images"] = str(fake_images.cpu().detach().numpy().tolist())
+            config["batch_size"]  = self.batch_size
 
 
         #########################################################
@@ -348,131 +364,262 @@ class CustomFedAvg(Strategy):
         ############# Custom Code to Train Generator ######################
         ###################################################################
 
-        # Create a folder to store generated images
-        dir_name = f'Federated_images_{self.experiment_name}'
+        if self.dataset_arg == "mnist":
 
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
+            # Create a folder to store generated images
+            dir_name = f'Federated_images_{self.experiment_name}'
 
-        # # scale image back to (0, 1)
-        # def scale_image(img):
-        #     out = (img + 1) / 2
-        #     return out
+            if not os.path.exists(dir_name):
+                os.makedirs(dir_name)
 
-        params_dict = zip(self.Discriminator_model.state_dict().keys(), parameters_to_ndarrays(parameters_aggregated) )
-        state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
-        self.Discriminator_model.load_state_dict(state_dict, strict=True)
+            # # scale image back to (0, 1)
+            # def scale_image(img):
+            #     out = (img + 1) / 2
+            #     return out
 
-        n = self.batch_size
-        latent_dim = self.latent_dim_input
+            params_dict = zip(self.Discriminator_model.state_dict().keys(), parameters_to_ndarrays(parameters_aggregated) )
+            state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
+            self.Discriminator_model.load_state_dict(state_dict, strict=True)
 
-        # ones_ = torch.ones(self.batch_size, 1).to(self.device)
-        # zeros_ = torch.zeros(self.batch_size, 1).to(self.device)
+            n = self.batch_size
+            latent_dim = self.latent_dim_input
 
-        ones = self.ones_label[:n]
-        zeros = self.zeros_label[:n]
+            # ones_ = torch.ones(self.batch_size, 1).to(self.device)
+            # zeros_ = torch.zeros(self.batch_size, 1).to(self.device)
 
-        for _ in range(2):
+            ones = self.ones_label[:n]
+            zeros = self.zeros_label[:n]
 
-            noise = torch.randn(n, latent_dim).to(self.device)
-            fake_images = self.Generator_model(noise)
-            fake_outputs = self.Discriminator_model(fake_images)
+            for _ in range(2):
 
-            # reverse the labels!
-            g_loss = criterion(fake_outputs, ones)
-
-            # gradient descent step
-            self.discriminator_optimizer.zero_grad()
-            self.generator_optimizer.zero_grad()
-            g_loss.backward()
-            # only optimizes G model parameters
-            self.generator_optimizer.step()
-
-        # save losses
-        self.g_loss_iterator +=  g_loss.item()
-
-        self.ite_num_in_ep += 1
-
-        print(self.ite_num_in_ep)
-
-
-        if self.ite_num_in_ep == self.no_of_iterations_epoch:
-            self.g_loss_iterator = self.g_loss_iterator/(self.no_of_iterations_epoch)
-
-            self.g_loss_array.append(self.g_loss_iterator)
-
-            self.g_loss_iterator = 0
-            self.ite_num_in_ep = 0
-            self.current_epoch_no +=1
-
-            # PyTorch has a function to save a batch of images to file
-            fake_images = fake_images.reshape(-1, 1, 28, 28)
-            save_image(self.scale_image_func(fake_images), os.path.join(dir_name,f"{self.current_epoch_no}_generated_images.png"))
-
-
-        if (self.current_epoch_no % 10 == 0 and self.ite_num_in_ep == 0) or (self.current_epoch_no == 0 and self.ite_num_in_ep == 1) :
-            
-            eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}"
-            if not os.path.exists(eval_dir):
-                os.makedirs(eval_dir)
-
-            for i in range(1,101):
-    
-    
-                num_batch = 500
-                latent_dim = self.latent_dim_input
-                
                 noise = torch.randn(n, latent_dim).to(self.device)
                 fake_images = self.Generator_model(noise)
-                
+                fake_outputs = self.Discriminator_model(fake_images)
+
+                # reverse the labels!
+                g_loss = criterion(fake_outputs, ones)
+
+                # gradient descent step
+                self.discriminator_optimizer.zero_grad()
+                self.generator_optimizer.zero_grad()
+                g_loss.backward()
+                # only optimizes G model parameters
+                self.generator_optimizer.step()
+
+            # save losses
+            self.g_loss_iterator +=  g_loss.item()
+
+            self.ite_num_in_ep += 1
+
+            print(self.ite_num_in_ep)
+
+
+            if self.ite_num_in_ep == self.no_of_iterations_epoch:
+                self.g_loss_iterator = self.g_loss_iterator/(self.no_of_iterations_epoch)
+
+                self.g_loss_array.append(self.g_loss_iterator)
+
+                self.g_loss_iterator = 0
+                self.ite_num_in_ep = 0
+                self.current_epoch_no +=1
+
+                # PyTorch has a function to save a batch of images to file
                 fake_images = fake_images.reshape(-1, 1, 28, 28)
+                save_image(self.scale_image_func(fake_images), os.path.join(dir_name,f"{self.current_epoch_no}_generated_images.png"))
+
+
+            if (self.current_epoch_no % 10 == 0 and self.ite_num_in_ep == 0) or (self.current_epoch_no == 0 and self.ite_num_in_ep == 1) :
                 
-                for j in range(1,n+1):
+                eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}"
+                if not os.path.exists(eval_dir):
+                    os.makedirs(eval_dir)
+
+                for i in range(1,101):
+        
+        
+                    num_batch = 500
+                    latent_dim = self.latent_dim_input
                     
-                    save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
+                    noise = torch.randn(n, latent_dim).to(self.device)
+                    fake_images = self.Generator_model(noise)
                     
-                    # counter+=1
-                    # print(counter)
+                    fake_images = fake_images.reshape(-1, 1, 28, 28)
+                    
+                    for j in range(1,n+1):
+                        
+                        save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
+                        
+                        # counter+=1
+                        # print(counter)
 
-            
-
-            command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
-            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-            process.wait()
-            print ("FID calculation success")
-            # Delete the folder gan_images
-            shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
-
-            
-
-        if self.current_epoch_no > 100 and self.ite_num_in_ep == 0:
-
-            eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}_final"
-            if not os.path.exists(eval_dir):
-                os.makedirs(eval_dir)
-
-            for i in range(1,101):
-    
-    
-                num_batch = 500
-                latent_dim = self.latent_dim_input
                 
-                noise = torch.randn(n, latent_dim).to(self.device)
+
+                command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+                process.wait()
+                print ("FID calculation success")
+                # Delete the folder gan_images
+                shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
+
+                
+
+            if self.current_epoch_no > 100 and self.ite_num_in_ep == 0:
+
+                eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}_final"
+                if not os.path.exists(eval_dir):
+                    os.makedirs(eval_dir)
+
+                for i in range(1,101):
+        
+        
+                    num_batch = 500
+                    latent_dim = self.latent_dim_input
+                    
+                    noise = torch.randn(n, latent_dim).to(self.device)
+                    fake_images = self.Generator_model(noise)
+                    
+                    fake_images = fake_images.reshape(-1, 1, 28, 28)
+                    
+                    for j in range(1,n+1):
+                        
+                        save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
+
+
+                command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+                process.wait()
+                print ("FID calculation success")
+                # Delete the folder gan_images
+                shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
+
+
+        if self.dataset_arg == "cifar10":
+
+            # Create a folder to store generated images
+            dir_name = f'Federated_images_{self.experiment_name}'
+
+            if not os.path.exists(dir_name):
+                os.makedirs(dir_name)
+
+            # # scale image back to (0, 1)
+            # def scale_image(img):
+            #     out = (img + 1) / 2
+            #     return out
+
+            params_dict = zip(self.Discriminator_model.state_dict().keys(), parameters_to_ndarrays(parameters_aggregated) )
+            state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
+            self.Discriminator_model.load_state_dict(state_dict, strict=True)
+
+            n = self.batch_size
+            latent_dim = self.latent_dim_input
+
+            # ones_ = torch.ones(self.batch_size, 1).to(self.device)
+            # zeros_ = torch.zeros(self.batch_size, 1).to(self.device)
+
+            ones = self.ones_label[:n]
+            zeros = self.zeros_label[:n]
+
+            for _ in range(2):
+
+                noise = torch.randn(n, latent_dim,1,1).to(self.device)
                 fake_images = self.Generator_model(noise)
+                fake_outputs = self.Discriminator_model(fake_images)
+
+                # reverse the labels!
+                g_loss = criterion(fake_outputs, ones)
+
+                # gradient descent step
+                self.discriminator_optimizer.zero_grad()
+                self.generator_optimizer.zero_grad()
+                g_loss.backward()
+                # only optimizes G model parameters
+                self.generator_optimizer.step()
+
+            # save losses
+            self.g_loss_iterator +=  g_loss.item()
+
+            self.ite_num_in_ep += 1
+
+            print(self.ite_num_in_ep)
+
+
+            if self.ite_num_in_ep == self.no_of_iterations_epoch:
+                self.g_loss_iterator = self.g_loss_iterator/(self.no_of_iterations_epoch)
+
+                self.g_loss_array.append(self.g_loss_iterator)
+
+                self.g_loss_iterator = 0
+                self.ite_num_in_ep = 0
+                self.current_epoch_no +=1
+
+                # PyTorch has a function to save a batch of images to file
+                # fake_images = fake_images.reshape(-1, 3, 32, 32)
+                save_image(self.scale_image_func(fake_images), os.path.join(dir_name,f"{self.current_epoch_no}_generated_images.png"))
+
+
+            if (self.current_epoch_no % 10 == 0 and self.ite_num_in_ep == 0) or (self.current_epoch_no == 0 and self.ite_num_in_ep == 1) :
                 
-                fake_images = fake_images.reshape(-1, 1, 28, 28)
-                
-                for j in range(1,n+1):
+                eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}"
+                if not os.path.exists(eval_dir):
+                    os.makedirs(eval_dir)
+
+                for i in range(1,101):
+        
+        
+                    num_batch = 500
+                    latent_dim = self.latent_dim_input
                     
-                    save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
+                    noise = torch.randn(n, latent_dim,1,1).to(self.device)
+                    fake_images = self.Generator_model(noise)
+                    
+                    # fake_images = fake_images.reshape(-1, 1, 28, 28)
+                    
+                    for j in range(1,n+1):
+                        
+                        save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
+                        
+                        # counter+=1
+                        # print(counter)
+
+                
+
+                command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+                process.wait()
+                print ("FID calculation success")
+                # Delete the folder gan_images
+                shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
+
+                
+
+            if self.current_epoch_no > 100 and self.ite_num_in_ep == 0:
+
+                eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}_final"
+                if not os.path.exists(eval_dir):
+                    os.makedirs(eval_dir)
+
+                for i in range(1,101):
+        
+        
+                    num_batch = 500
+                    latent_dim = self.latent_dim_input
+                    
+                    noise = torch.randn(n, latent_dim,1,1).to(self.device)
+                    fake_images = self.Generator_model(noise)
+                    
+                    # fake_images = fake_images.reshape(-1, 1, 28, 28)
+                    
+                    for j in range(1,n+1):
+                        
+                        save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
 
 
-            command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
-            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-            process.wait()
-            print ("FID calculation success")
-            # Delete the folder gan_images
-            shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
+                command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+                process.wait()
+                print ("FID calculation success")
+                # Delete the folder gan_images
+                shutil.rmtree(os.path.join(f"GAN_server_{self.experiment_name}", "gan_images"))
              
 
 

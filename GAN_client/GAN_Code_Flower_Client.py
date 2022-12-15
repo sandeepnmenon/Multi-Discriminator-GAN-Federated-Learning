@@ -16,7 +16,7 @@ import numpy as np
 import torchvision
 
 from core.models import Generator, Discriminator, G_D_Assemble
-from core.utils import load_gan, get_combined_gan_params, train_gan, load_discriminator
+from core.utils import load_gan, get_combined_gan_params, train_gan, load_discriminator, load_cifar_discriminator
 
 # #############################################################################
 # 1. Regular PyTorch pipeline: nn.Module, train, test, and DataLoader
@@ -71,11 +71,55 @@ def train_discriminator_one_step(discriminator, d_optimizer , fake_images, real_
     d_optimizer.step()
 
 
+def train_discriminator_one_step_cifar(discriminator, d_optimizer , fake_images, real_images,batch_size,criterion,device):
+
+    latent_dim = 100
+
+#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    discriminator.to(device)
+
+    # labels to use in the loop
+    ones_ = torch.ones(batch_size, 1).to(device)
+    zeros_ = torch.zeros(batch_size, 1).to(device)
+
+
+    # reshape and move to GPU
+    # print(real_images.shape)
+    n = real_images.size(0)
+    inputs = real_images.to(device) #(-1,784 ) also works
+
+    # set ones and zeros to correct size
+    ones = ones_[:n]
+    zeros = zeros_[:n]
+
+
+    ###########################
+    ### Train discriminator ###
+    ###########################
+
+    # real images
+    real_outputs = discriminator(inputs)
+    d_loss_real = criterion(real_outputs, ones)
+
+    # fake images
+    noise = torch.randn(n, latent_dim,1,1).to(device)
+    fake_images = fake_images.to(device)
+    fake_outputs = discriminator(fake_images)
+    d_loss_fake = criterion(fake_outputs, zeros)
+
+    # gradient descent step
+    d_loss = 0.5 * (d_loss_real + d_loss_fake)
+    d_optimizer.zero_grad()
+    d_loss.backward()
+    d_optimizer.step()
+
+
 # Define Flower client
 # Define Flower client
 class FlowerClient(fl.client.NumPyClient):
 
-    def __init__(self, discriminator, d_optimizer, criterion, batch_size ,dataloader, client_id, device) -> None:
+    def __init__(self, discriminator, d_optimizer, criterion, batch_size ,dataloader, client_id, device, dataset_type ) -> None:
         self.discriminator = discriminator
         self.d_optimizer = d_optimizer
         self.criterion = criterion
@@ -84,6 +128,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.batch_size = batch_size
         self.client_id = client_id
         self.device = device
+        self.dataset_type = dataset_type
         
     
     def get_parameters(self, config):
@@ -103,7 +148,14 @@ class FlowerClient(fl.client.NumPyClient):
 
         batch_size = self.batch_size
 
-        train_discriminator_one_step(self.discriminator, self.d_optimizer , fake_images, real_images,batch_size,self.criterion,self.device)
+        if self.dataset_type == "mnist"
+
+            train_discriminator_one_step(self.discriminator, self.d_optimizer , fake_images, real_images,batch_size,self.criterion,self.device)
+
+        if self.dataset_type == "cifar10":
+
+            train_discriminator_one_step_cifar(self.discriminator, self.d_optimizer , fake_images, real_images,batch_size,self.criterion,self.device)
+
         return self.get_parameters(config={}), len(self.dataloader.dataset), {}
 
     def evaluate(self, parameters, config):
@@ -120,42 +172,86 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size",type=str, default=None)
     parser.add_argument("--port",type=str, default=8889)
     parser.add_argument("--device",type=str, default=None)
+    parser.add_argument("--dataset",type=str, default=None)
 
     args = parser.parse_args()
 
-    ###########################
-    ### Compose Transforms ####
-    ###########################
+    dataset_type = str(args.dataset)
 
-    # looks weird, but makes pixel values between -1 and +1
-    # assume they are transformed from (0, 1)
-    # min value = (0 - 0.5) / 0.5 = -1
-    # max value = (1 - 0.5) / 0.5 = +1
-    transform = transforms.Compose([
-        transforms.Grayscale(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=(0.5,),
-                            std=(0.5,))])
+    if dataset_type == "mnist":
+
+        ###########################
+        ### Compose Transforms ####
+        ###########################
+
+        # looks weird, but makes pixel values between -1 and +1
+        # assume they are transformed from (0, 1)
+        # min value = (0 - 0.5) / 0.5 = -1
+        # max value = (1 - 0.5) / 0.5 = +1
+        transform = transforms.Compose([
+            transforms.Grayscale(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5,),
+                                std=(0.5,))])
 
 
-    train_dataset = torchvision.datasets.ImageFolder(
-        root=args.dataset_path,
-        transform=transform,
-        )
+        train_dataset = torchvision.datasets.ImageFolder(
+            root=args.dataset_path,
+            transform=transform,
+            )
 
-    batch_size = eval(args.batch_size)
-    data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                            batch_size=batch_size, 
-                                            shuffle=True)
+        batch_size = eval(args.batch_size)
+        data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                batch_size=batch_size, 
+                                                shuffle=True)
 
-    ###########################
-    ### Compose Transforms ####
-    ###########################
+        ###########################
+        ### Compose Transforms ####
+        ###########################
 
-    # Create models     
-    discriminator, d_optimizer, criterion = load_discriminator()  
+        # Create models     
+        discriminator, d_optimizer, criterion = load_discriminator()  
 
-    flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) , args.device )
-    # Start Flower client
-    fl.client.start_numpy_client(server_address=f"127.0.0.1:{args.port}",client=flower_client)
+        flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) , args.device, dataset_type )
+        # Start Flower client
+        fl.client.start_numpy_client(server_address=f"127.0.0.1:{args.port}",client=flower_client)
+
+
+    if dataset_type == "cifar10":
+
+        ###########################
+        ### Compose Transforms ####
+        ###########################
+
+        # looks weird, but makes pixel values between -1 and +1
+        # assume they are transformed from (0, 1)
+        # min value = (0 - 0.5) / 0.5 = -1
+        # max value = (1 - 0.5) / 0.5 = +1
+        transform = transforms.Compose([
+            transforms.Resize(32),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5, 0.5, 0.5),
+                                std=(0.5,0.5, 0.5))])
+
+
+        train_dataset = torchvision.datasets.ImageFolder(
+            root=args.dataset_path,
+            transform=transform,
+            )
+
+        batch_size = eval(args.batch_size)
+        data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                batch_size=batch_size, 
+                                                shuffle=True)
+
+        ###########################
+        ### Compose Transforms ####
+        ###########################
+
+        # Create models     
+        discriminator, d_optimizer, criterion = load_cifar_discriminator 
+
+        flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) , args.device )
+        # Start Flower client
+        fl.client.start_numpy_client(server_address=f"127.0.0.1:{args.port}",client=flower_client)
 
