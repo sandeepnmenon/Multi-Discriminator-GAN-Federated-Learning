@@ -161,6 +161,7 @@ if __name__ == "__main__":
     # read from corresponding yaml file
     strategy_conf = yaml.load(open(f"config/{dataset}/{strategy_type.lower()}.yaml", "r"), Loader=yaml.FullLoader)
     strategy_module = fl.server.strategy.__dict__[strategy_type]
+    strategy_args = strategy_conf["init"]
     strategy = strategy_module(
     	fraction_fit = 1.0,
         fraction_evaluate = 1.0,
@@ -172,11 +173,7 @@ if __name__ == "__main__":
         initial_parameters=parameters_init,
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,
-        beta_1=strategy_conf["init"]["beta_1"],
-        beta_2=strategy_conf["init"]["beta_2"],
-        eta=strategy_conf["init"]["eta"],
-        tau=strategy_conf["init"]["tau"],
-        eta_lr=strategy_conf["init"]["eta_lr"],
+        **strategy_args,
     )
 
     # Start Flower server
