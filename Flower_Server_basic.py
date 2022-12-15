@@ -8,7 +8,7 @@ from torchvision.utils import save_image
 
 import flwr as fl
 from flwr.common import Metrics
-from GAN_client_basic.core.utils import load_gan, scale_image, generate_images, get_combined_gan_params
+from GAN_client_basic.core.utils import load_gan, scale_image, generate_images, get_combined_gan_params, load_cifar_gan
 from FL_Algorithms.CustomFedAvg import CustomFedAvg
 import math
 import subprocess
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch_size",  default=BATCH_SIZE)
-    parser.add_argument("--dataset",  default="mnist")
+    parser.add_argument("--dataset",  default="mnist", choices=["mnist", "cifar10"])
     parser.add_argument("--dataset_size",  default=DATASET_SIZE)
     parser.add_argument("--latent_dim_input",  default=LATENT_DIM_INPUT)
     parser.add_argument("--original_dataset_path",  default=ORIGINAL_DATASET_PATH)
@@ -148,15 +148,17 @@ if __name__ == "__main__":
 
     no_of_clients = eval(args.num_clients)
 
-
-    generator, discriminator, g_optimiser, d_optimiser, criterion = load_gan()
+    dataset = args.dataset
+    if dataset == "mnist":
+        generator, discriminator, g_optimiser, d_optimiser, criterion = load_gan()
+    elif dataset == "cifar10":
+        generator, discriminator, g_optimiser, d_optimiser, criterion = load_cifar_gan()
     combined_weights = get_combined_gan_params(generator, discriminator)
 
     parameters_init = fl.common.ndarrays_to_parameters(combined_weights)
 
 
     # Define strategy
-    dataset = args.dataset
     strategy_type = args.strategy_type
     # read from corresponding yaml file
     strategy_conf = yaml.load(open(f"config/{dataset}/{strategy_type.lower()}.yaml", "r"), Loader=yaml.FullLoader)

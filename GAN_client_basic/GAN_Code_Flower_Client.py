@@ -16,7 +16,7 @@ import numpy as np
 import torchvision
 
 from core.models import Generator, Discriminator, G_D_Assemble
-from core.utils import load_gan, get_combined_gan_params, train_gan, scale_image, generate_images
+from core.utils import load_gan, get_combined_gan_params, train_gan, load_cifar_gan, generate_images
 
 # #############################################################################
 # 1. Regular PyTorch pipeline: nn.Module, train, test, and DataLoader
@@ -81,22 +81,30 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--client_id", type=str, default=0)
+    parser.add_argument("--dataset",  default="mnist", choices=["mnist", "cifar10"])
     parser.add_argument("--dataset_path",type=str, default=None)
     parser.add_argument("--batch_size",type=str, default=None)
     parser.add_argument("--port",type=str, default=8889)
 
 
     args = parser.parse_args()
+    dataset = args.dataset
+    
+    if dataset == "mnist":
+        transform = transforms.Compose([
+            transforms.Grayscale(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5,),
+                                std=(0.5,))])
+        generator, discriminator, g_optimiser, d_optimiser, criterion = load_gan()
+    elif dataset == "cifar10":
+        transform = transforms.Compose([
+            transforms.Resize(32),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5, 0.5, 0.5),
+                                std=(0.5,0.5, 0.5))])
 
-    # looks weird, but makes pixel values between -1 and +1
-    # assume they are transformed from (0, 1)
-    # min value = (0 - 0.5) / 0.5 = -1
-    # max value = (1 - 0.5) / 0.5 = +1
-    transform = transforms.Compose([
-        transforms.Grayscale(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=(0.5,),
-                            std=(0.5,))])
+        generator, discriminator, g_optimiser, d_optimiser, criterion = load_cifar_gan()
 
 
     train_dataset = torchvision.datasets.ImageFolder(
@@ -110,7 +118,6 @@ if __name__ == "__main__":
                                             shuffle=True)
 
     # Create models     
-    generator, discriminator, g_optimiser, d_optimiser, criterion = load_gan()
 
     flower_client = FlowerClient(
         generator, discriminator, g_optimiser, d_optimiser, data_loader, client_id=eval(args.client_id))
