@@ -50,7 +50,9 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, original_dat
 
         eval_dir = f"GAN_server_{experiment_name}/gan_images/fid_epoch_{server_round}"
         dir_name = f'Federated_images_{experiment_name}'
-
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+            
         if not os.path.exists(eval_dir):
             os.makedirs(eval_dir)
         print(f"Server round {server_round}")
@@ -73,7 +75,7 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, original_dat
         for i in range(1, BATCH_SIZE):
             save_image(fake_images[i-1], os.path.join(eval_dir, f"{server_round}_{i}.png"))
 
-        command = "python -m pytorch_fid --batch-size 128 "+original_dataset_path+" "+eval_dir+f" > GAN_server_{experiment_name}/fid_results"+ str(server_round) +".txt"
+        command = "python -m pytorch_fid --batch-size 1024 "+original_dataset_path+" "+eval_dir+f" > GAN_server_{experiment_name}/fid_results"+ str(server_round) +".txt"
         print("Running command ", command)
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
         process.wait()

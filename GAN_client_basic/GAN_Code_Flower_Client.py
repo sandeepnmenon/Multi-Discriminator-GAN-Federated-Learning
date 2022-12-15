@@ -24,7 +24,7 @@ from core.utils import load_gan, get_combined_gan_params, train_gan, scale_image
 
 warnings.filterwarnings("ignore", category=UserWarning)
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-USE_FEDBN = False
+USE_FEDBN = True
 
 
 # Define Flower client
