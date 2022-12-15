@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torchvision.utils import save_image
 
 from .models import Discriminator, Generator
+from .cifar10_models import CIFARDiscriminator, CIFARGenerator, weights_init
 
 
 def scale_image(img):
@@ -193,3 +194,21 @@ def generate_images(G, D, num_images, shape=(1, 28, 28)):
     return scale_image(fake_images), g_loss
 
 
+def load_cifar_gan(lr=0.0002,nz = 100, ngf = 64, ndf=64, nc= 3, weights_init = weights_init):
+    generator = CIFARGenerator(nz=nz,ngf=ngf,nc=nc )
+    generator.apply(weights_init)
+
+    discriminator = CIFARDiscriminator(nz=nz,ndf=ndf,nc=nc)
+    discriminator.apply(weights_init)
+
+    # optimizes parameters only in G model
+    g_optimizer = optim.Adam(
+        generator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    d_optimizer = optim.Adam(
+        discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    # Loss and optimizers
+    criterion = nn.BCEWithLogitsLoss()
+
+    return generator, discriminator, g_optimizer, d_optimizer,criterion
