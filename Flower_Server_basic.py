@@ -116,6 +116,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_clients",  default=NUM_CLIENTS)
     parser.add_argument("--experiment_name", type=str, default='default')
     parser.add_argument("--port",type=str, default=8889)
+    parser.add_argument("--strategy_type", type=str, default="FedAvg")
 
     args = parser.parse_args()
 
@@ -153,7 +154,9 @@ if __name__ == "__main__":
 
 
     # Define strategy
-    strategy = fl.server.strategy.FedAvg(
+    strategy_type = args.strategy_type
+    strategy_module = fl.server.strategy.__dict__[strategy_type]
+    strategy = strategy_module(
     	fraction_fit = 1.0,
         fraction_evaluate = 1.0,
         min_fit_clients = no_of_clients,
