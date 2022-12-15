@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torchvision.utils import save_image
 
 from .models import Discriminator, Generator
+from .cifar10_models import CIFARDiscriminator, CIFARGenerator, weights_init
 
 
 def scale_image(img):
@@ -16,6 +17,26 @@ def scale_image(img):
 def load_gan(lr=0.0002,latent_dim = 100):
     generator = Generator(latent_dim=latent_dim)
     discriminator = Discriminator()
+
+    # optimizes parameters only in G model
+    g_optimizer = optim.Adam(
+        generator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    d_optimizer = optim.Adam(
+        discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    # Loss and optimizers
+    criterion = nn.BCEWithLogitsLoss()
+
+    return generator, discriminator, g_optimizer, d_optimizer,criterion
+
+
+def load_cifar_gan(lr=0.0002,nz = 100, ngf = 64, ndf=64, nc= 3, weights_init = weights_init):
+    generator = CIFARGenerator(nz=nz,ngf=ngf,nc=nc )
+    generator.apply(weights_init)
+
+    discriminator = CIFARDiscriminator(nz=nz,ndf=ndf,nc=nc)
+    discriminator.apply(weights_init)
 
     # optimizes parameters only in G model
     g_optimizer = optim.Adam(
@@ -41,6 +62,19 @@ def load_discriminator(lr=0.0002):
 
     return  discriminator, d_optimizer,criterion
 
+def load_cifar_discriminator(lr=0.0002,nz = 100, ngf = 64, ndf=64, nc= 3, weights_init= weights_init):
+    discriminator = CIFARDiscriminator(nz=nz,ndf=ndf,nc=nc)
+    discriminator.apply(weights_init)
+
+
+    d_optimizer = optim.Adam(
+        discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    # Loss and optimizers
+    criterion = nn.BCEWithLogitsLoss()
+
+    return discriminator, d_optimizer,criterion
+
 def load_generator(lr=0.0002,latent_dim = 100):
 
 
@@ -49,6 +83,22 @@ def load_generator(lr=0.0002,latent_dim = 100):
     # optimizes parameters only in G model
     g_optimizer = optim.Adam(
         generator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    # Loss and optimizers
+    criterion = nn.BCEWithLogitsLoss()
+
+    return generator, g_optimizer, criterion
+
+
+def load_cifar_generator(lr=0.0002,nz = 100, ngf = 64, ndf=64, nc= 3, weights_init= weights_init):
+    generator = CIFARGenerator(nz=nz,ngf=ngf,nc=nc )
+    generator.apply(weights_init)
+
+    # optimizes parameters only in G model
+    g_optimizer = optim.Adam(
+        generator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+
 
     # Loss and optimizers
     criterion = nn.BCEWithLogitsLoss()

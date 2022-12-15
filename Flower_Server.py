@@ -32,6 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_clients",  default=NUM_CLIENTS)
     parser.add_argument("--experiment_name", type=str, default='default')
     parser.add_argument("--port",type=str, default=8889)
+    parser.add_argument("--dataset",type=str, default="cifar10")
 
     args = parser.parse_args()
 
@@ -65,6 +66,8 @@ if __name__ == "__main__":
     total_number_of_rounds = math.ceil(dataset_size/batch_size)*110
 
     no_of_clients = eval(args.num_clients)
+
+    dataset_arg = str(args.dataset)
 
 
     # Define metric aggregation function
@@ -100,7 +103,8 @@ if __name__ == "__main__":
                             latent_dim_input = latent_dim_input,
                             scale_image_func = scale_image_func,
                             original_dataset_path = original_dataset_path,
-                            experiment_name=args.experiment_name)
+                            experiment_name=args.experiment_name,
+                            dataset_arg = dataset_arg)
 
     # Start Flower server
     fl.server.start_server(
