@@ -272,7 +272,7 @@ class CustomFedAvg(Strategy):
         latent_dim = self.latent_dim_input
 
         # fake images
-        noise = torch.randn(n, latent_dim).to(device)
+        noise = torch.randn(n, latent_dim).to(self.device)
         fake_images = self.Generator_model(noise)
 
         config["fake_images"] = str(fake_images.cpu().detach().numpy().tolist())
@@ -374,7 +374,7 @@ class CustomFedAvg(Strategy):
 
         for _ in range(2):
 
-            noise = torch.randn(n, latent_dim).to(device)
+            noise = torch.randn(n, latent_dim).to(self.device)
             fake_images = self.Generator_model(noise)
             fake_outputs = self.Discriminator_model(fake_images)
 
