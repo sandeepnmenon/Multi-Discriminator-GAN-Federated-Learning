@@ -560,7 +560,7 @@ class CustomFedAvg(Strategy):
                 save_image(self.scale_image_func(fake_images), os.path.join(dir_name,f"{self.current_epoch_no}_generated_images.png"))
 
 
-            if (self.current_epoch_no % 10 == 0 and self.ite_num_in_ep == 0) or (self.current_epoch_no == 0 and self.ite_num_in_ep == 1) :
+            if (self.current_epoch_no % 2 == 0 and self.ite_num_in_ep == 0) or (self.current_epoch_no == 0 and self.ite_num_in_ep == 1) :
                 
                 eval_dir = f"GAN_server_{self.experiment_name}/gan_images/fid_epoch_{self.current_epoch_no}"
                 if not os.path.exists(eval_dir):

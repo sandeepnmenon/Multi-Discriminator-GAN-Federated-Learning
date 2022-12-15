@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
 
 
-        total_number_of_rounds = math.ceil(dataset_size/batch_size)*110
+        total_number_of_rounds = math.ceil(dataset_size/batch_size)*25
 
         no_of_clients = eval(args.num_clients)
 
