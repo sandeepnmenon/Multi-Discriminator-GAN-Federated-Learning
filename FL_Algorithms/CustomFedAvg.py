@@ -54,27 +54,27 @@ import subprocess
 ##### Custom FedAvg Strategy for training GANs #####
 ####################################################
 
-WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
-Setting `min_available_clients` lower than `min_fit_clients` or
-`min_evaluate_clients` can cause the server to fail when there are too few clients
-connected to the server. `min_available_clients` must be set to a value larger
-than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
-"""
+# WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
+# Setting `min_available_clients` lower than `min_fit_clients` or
+# `min_evaluate_clients` can cause the server to fail when there are too few clients
+# connected to the server. `min_available_clients` must be set to a value larger
+# than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
+# """
 
 
-# Load model for server-side parameter initialization
-generator, discriminator, g_optimizer, d_optimizer, criterion = load_gan()
+# # Load model for server-side parameter initialization
+# generator, discriminator, g_optimizer, d_optimizer, criterion = load_gan()
 
 
-# Configuring device for training
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# # Configuring device for training
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
      
-generator = generator.to(device)
-discriminator = discriminator.to(device)
+# generator = generator.to(device)
+# discriminator = discriminator.to(device)
 
-# Setting Batchsize
-batch_size = 128
+# # Setting Batchsize
+# batch_size = 128
 
 class CustomFedAvg(Strategy):
     """Configurable FedAvg strategy implementation."""
