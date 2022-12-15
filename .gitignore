@@ -34,3 +34,8 @@ cifar_final_splits/
 Federated_images_mnist*/
 GAN_server_mnist*/
 
+cifar_splits_*/
+Original_CIFAR_Dataset
+Federated_images_cifar*/
+GAN_server_cifar*/
+
