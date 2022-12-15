@@ -23,10 +23,13 @@ experiments_folder/store_mnist
 GAN_server/
 
 
+
 mnist_final_splits/
 mnist_splits_noniid_clients_2
 Original_MNIST_Dataset
 mnist_splits_*/
+cifar_splits_*/
+cifar_final_splits/
 *.out
 Federated_images_mnist*/
 GAN_server_mnist*/
