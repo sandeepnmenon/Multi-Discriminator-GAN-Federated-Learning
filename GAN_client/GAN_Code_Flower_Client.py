@@ -27,11 +27,11 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 USE_FEDBN = True
 
 
-def train_discriminator_one_step(discriminator, d_optimizer , fake_images, real_images,batch_size,criterion):
+def train_discriminator_one_step(discriminator, d_optimizer , fake_images, real_images,batch_size,criterion,device):
 
     latent_dim = 100
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     discriminator.to(device)
 
@@ -75,7 +75,7 @@ def train_discriminator_one_step(discriminator, d_optimizer , fake_images, real_
 # Define Flower client
 class FlowerClient(fl.client.NumPyClient):
 
-    def __init__(self, discriminator, d_optimizer, criterion, batch_size ,dataloader, client_id) -> None:
+    def __init__(self, discriminator, d_optimizer, criterion, batch_size ,dataloader, client_id, device) -> None:
         self.discriminator = discriminator
         self.d_optimizer = d_optimizer
         self.criterion = criterion
@@ -83,6 +83,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.dataloader = dataloader
         self.batch_size = batch_size
         self.client_id = client_id
+        self.device = device
         
     
     def get_parameters(self, config):
@@ -102,7 +103,7 @@ class FlowerClient(fl.client.NumPyClient):
 
         batch_size = self.batch_size
 
-        train_discriminator_one_step(self.discriminator, self.d_optimizer , fake_images, real_images,batch_size,self.criterion)
+        train_discriminator_one_step(self.discriminator, self.d_optimizer , fake_images, real_images,batch_size,self.criterion,self.device)
         return self.get_parameters(config={}), len(self.dataloader.dataset), {}
 
     def evaluate(self, parameters, config):
@@ -118,6 +119,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_path",type=str, default=None)
     parser.add_argument("--batch_size",type=str, default=None)
     parser.add_argument("--port",type=str, default=8889)
+    parser.add_argument("--port",type=str, default=None)
 
     args = parser.parse_args()
 
@@ -153,7 +155,7 @@ if __name__ == "__main__":
     # Create models     
     discriminator, d_optimizer, criterion = load_discriminator()  
 
-    flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) )
+    flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) , args.device )
     # Start Flower client
     fl.client.start_numpy_client(server_address=f"127.0.0.1:{args.port}",client=flower_client)
 
