@@ -49,7 +49,7 @@ import torchvision.utils as vutils
 # device= "cuda:0"
 
 # custom weights initialization called on netG and netD
-def cifar_weights_init(m):
+def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
         m.weight.data.normal_(0.0, 0.02)
@@ -84,16 +84,16 @@ class CIFARGenerator(nn.Module):
             output = self.main(input)
             return output
 
-# netG = Generator().to(device)
+# netG = CIFARGenerator(nz=100,ngf=64,nc=3)
 # netG.apply(weights_init)
 
 
 
 
-# # print(summary(netG, (nz,1,1)))
-# #load weights to test the model
-# #netG.load_state_dict(torch.load('weights/netG_epoch_24.pth'))
-# output = netG(torch.randn(1, nz, 1, 1, device=device))
+# # # print(summary(netG, (nz,1,1)))
+# # #load weights to test the model
+# # #netG.load_state_dict(torch.load('weights/netG_epoch_24.pth'))
+# output = netG(torch.randn(1, 100, 1, 1))
 
 # print("hi testing", output.shape)
 
@@ -125,7 +125,13 @@ class CIFARDiscriminator(nn.Module):
 
         return output.view(-1, 1).squeeze(1)
 
-# netD = Discriminator().to(device)
+# netD = CIFARDiscriminator(nz=100,ndf=64,nc=3)
+# netD.apply(weights_init)
+
+
+# output = netD(torch.randn(1, 3, 32, 32))
+
+# print("hi testing", output.shape)
 # netD.apply(weights_init)
 # #load weights to test the model 
 # #netD.load_state_dict(torch.load('weights/netD_epoch_24.pth'))
