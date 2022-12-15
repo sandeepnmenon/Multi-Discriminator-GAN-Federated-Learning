@@ -5,7 +5,7 @@ set -e
 cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"/
 
 
-folders=("cifar_splits_10_5_noniid") 
+folders=("cifar_splits_2_01") 
 # fold="mnist_splits_2_01"
 echo "Starting experiments"
 

@@ -98,14 +98,19 @@ def train_discriminator_one_step_cifar(discriminator, d_optimizer , fake_images,
     ### Train discriminator ###
     ###########################
 
+    
+
     # real images
     real_outputs = discriminator(inputs)
+
+    real_outputs = real_outputs.unsqueeze(1)
     d_loss_real = criterion(real_outputs, ones)
 
     # fake images
     noise = torch.randn(n, latent_dim,1,1).to(device)
     fake_images = fake_images.to(device)
     fake_outputs = discriminator(fake_images)
+    fake_outputs = fake_outputs.unsqueeze(1)
     d_loss_fake = criterion(fake_outputs, zeros)
 
     # gradient descent step
@@ -148,7 +153,7 @@ class FlowerClient(fl.client.NumPyClient):
 
         batch_size = self.batch_size
 
-        if self.dataset_type == "mnist"
+        if self.dataset_type == "mnist":
 
             train_discriminator_one_step(self.discriminator, self.d_optimizer , fake_images, real_images,batch_size,self.criterion,self.device)
 
@@ -249,9 +254,9 @@ if __name__ == "__main__":
         ###########################
 
         # Create models     
-        discriminator, d_optimizer, criterion = load_cifar_discriminator 
+        discriminator, d_optimizer, criterion = load_cifar_discriminator() 
 
-        flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) , args.device )
+        flower_client = FlowerClient(discriminator, d_optimizer, criterion, batch_size ,data_loader, eval(args.client_id) , args.device , dataset_type)
         # Start Flower client
         fl.client.start_numpy_client(server_address=f"127.0.0.1:{args.port}",client=flower_client)
 

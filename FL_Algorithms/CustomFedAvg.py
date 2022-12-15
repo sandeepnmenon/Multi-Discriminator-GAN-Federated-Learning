@@ -396,6 +396,8 @@ class CustomFedAvg(Strategy):
                 fake_images = self.Generator_model(noise)
                 fake_outputs = self.Discriminator_model(fake_images)
 
+                
+
                 # reverse the labels!
                 g_loss = criterion(fake_outputs, ones)
 
@@ -525,6 +527,7 @@ class CustomFedAvg(Strategy):
                 fake_images = self.Generator_model(noise)
                 fake_outputs = self.Discriminator_model(fake_images)
 
+                fake_outputs = fake_outputs.unsqueeze(1)
                 # reverse the labels!
                 g_loss = criterion(fake_outputs, ones)
 

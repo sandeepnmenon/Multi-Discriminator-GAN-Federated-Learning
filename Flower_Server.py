@@ -7,7 +7,7 @@ from torchvision.utils import save_image
 
 import flwr as fl
 from flwr.common import Metrics
-from GAN_client.core.utils import load_gan, scale_image
+from GAN_client.core.utils import load_gan, scale_image, load_cifar_gan
 from FL_Algorithms.CustomFedAvg import CustomFedAvg
 import math
 
@@ -36,79 +36,165 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Load model for server-side parameter initialization
-    Generator_model, Discriminator_model, generator_optimizer, discriminator_optimizer, criterion = load_gan()
+    dataset_type = str(args.dataset)
 
-    # batch size
-    batch_size = eval(args.batch_size)
+    if dataset_type == "mnist":
 
-    #device
-    device = args.device
+        # Load model for server-side parameter initialization
+        Generator_model, Discriminator_model, generator_optimizer, discriminator_optimizer, criterion = load_gan()
 
-    # dataset_size
-    dataset_size = eval(args.dataset_size)
+        # batch size
+        batch_size = eval(args.batch_size)
 
-    # labels
-    ones_label = torch.ones(batch_size, 1).to(device)
-    zeros_label = torch.zeros(batch_size, 1).to(device)
+        #device
+        device = args.device
 
-    # latent dim size
-    latent_dim_input = eval(args.latent_dim_input)
+        # dataset_size
+        dataset_size = eval(args.dataset_size)
 
-    # scale image func
-    scale_image_func = scale_image
+        # labels
+        ones_label = torch.ones(batch_size, 1).to(device)
+        zeros_label = torch.zeros(batch_size, 1).to(device)
 
-    # original_dataset_path
-    original_dataset_path = args.original_dataset_path
+        # latent dim size
+        latent_dim_input = eval(args.latent_dim_input)
 
+        # scale image func
+        scale_image_func = scale_image
 
-
-    total_number_of_rounds = math.ceil(dataset_size/batch_size)*110
-
-    no_of_clients = eval(args.num_clients)
-
-    dataset_arg = str(args.dataset)
+        # original_dataset_path
+        original_dataset_path = args.original_dataset_path
 
 
-    # Define metric aggregation function
-    def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
-        # Multiply accuracy of each client by number of examples used
-        accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
-        examples = [num_examples for num_examples, _ in metrics]
 
-        # Aggregate and return custom metric (weighted average)
-        return {"accuracy": sum(accuracies) / sum(examples)}
+        total_number_of_rounds = math.ceil(dataset_size/batch_size)*110
 
-    print(device)
+        no_of_clients = eval(args.num_clients)
+
+        dataset_arg = str(args.dataset)
 
 
-    # Define strategy
-    strategy = CustomFedAvg(
-                            fraction_fit = 1.0,
-                            fraction_evaluate = 1.0,
-                            min_fit_clients = no_of_clients,
-                            min_evaluate_clients = no_of_clients,
-                            min_available_clients = no_of_clients,
-                            evaluate_metrics_aggregation_fn=weighted_average,
-                            Generator_model = Generator_model,
-                            Discriminator_model = Discriminator_model,
-                            generator_optimizer = generator_optimizer,
-                            discriminator_optimizer = discriminator_optimizer,
-                            criterion = criterion,
-                            batch_size = batch_size,
-                            device = device,
-                            dataset_size = dataset_size,
-                            ones_label = ones_label,
-                            zeros_label = zeros_label,
-                            latent_dim_input = latent_dim_input,
-                            scale_image_func = scale_image_func,
-                            original_dataset_path = original_dataset_path,
-                            experiment_name=args.experiment_name,
-                            dataset_arg = dataset_arg)
+        # Define metric aggregation function
+        def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
+            # Multiply accuracy of each client by number of examples used
+            accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
+            examples = [num_examples for num_examples, _ in metrics]
 
-    # Start Flower server
-    fl.server.start_server(
-        server_address=f"127.0.0.1:{args.port}",
-        config=fl.server.ServerConfig(num_rounds=total_number_of_rounds),
-        strategy=strategy,
-    )
+            # Aggregate and return custom metric (weighted average)
+            return {"accuracy": sum(accuracies) / sum(examples)}
+
+        print(device)
+
+
+        # Define strategy
+        strategy = CustomFedAvg(
+                                fraction_fit = 1.0,
+                                fraction_evaluate = 1.0,
+                                min_fit_clients = no_of_clients,
+                                min_evaluate_clients = no_of_clients,
+                                min_available_clients = no_of_clients,
+                                evaluate_metrics_aggregation_fn=weighted_average,
+                                Generator_model = Generator_model,
+                                Discriminator_model = Discriminator_model,
+                                generator_optimizer = generator_optimizer,
+                                discriminator_optimizer = discriminator_optimizer,
+                                criterion = criterion,
+                                batch_size = batch_size,
+                                device = device,
+                                dataset_size = dataset_size,
+                                ones_label = ones_label,
+                                zeros_label = zeros_label,
+                                latent_dim_input = latent_dim_input,
+                                scale_image_func = scale_image_func,
+                                original_dataset_path = original_dataset_path,
+                                experiment_name=args.experiment_name,
+                                dataset_arg = dataset_arg)
+
+        # Start Flower server
+        fl.server.start_server(
+            server_address=f"127.0.0.1:{args.port}",
+            config=fl.server.ServerConfig(num_rounds=total_number_of_rounds),
+            strategy=strategy,
+        )
+
+
+    dataset_type = str(args.dataset)
+
+    if dataset_type == "cifar10":
+
+        # Load model for server-side parameter initialization
+        Generator_model, Discriminator_model, generator_optimizer, discriminator_optimizer, criterion = load_cifar_gan()
+
+        # batch size
+        batch_size = eval(args.batch_size)
+
+        #device
+        device = args.device
+
+        # dataset_size
+        dataset_size = eval(args.dataset_size)
+
+        # labels
+        ones_label = torch.ones(batch_size, 1).to(device)
+        zeros_label = torch.zeros(batch_size, 1).to(device)
+
+        # latent dim size
+        latent_dim_input = eval(args.latent_dim_input)
+
+        # scale image func
+        scale_image_func = scale_image
+
+        # original_dataset_path
+        original_dataset_path = args.original_dataset_path
+
+
+
+        total_number_of_rounds = math.ceil(dataset_size/batch_size)*110
+
+        no_of_clients = eval(args.num_clients)
+
+        dataset_arg = str(args.dataset)
+
+
+        # Define metric aggregation function
+        def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
+            # Multiply accuracy of each client by number of examples used
+            accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
+            examples = [num_examples for num_examples, _ in metrics]
+
+            # Aggregate and return custom metric (weighted average)
+            return {"accuracy": sum(accuracies) / sum(examples)}
+
+        print(device)
+
+
+        # Define strategy
+        strategy = CustomFedAvg(
+                                fraction_fit = 1.0,
+                                fraction_evaluate = 1.0,
+                                min_fit_clients = no_of_clients,
+                                min_evaluate_clients = no_of_clients,
+                                min_available_clients = no_of_clients,
+                                evaluate_metrics_aggregation_fn=weighted_average,
+                                Generator_model = Generator_model,
+                                Discriminator_model = Discriminator_model,
+                                generator_optimizer = generator_optimizer,
+                                discriminator_optimizer = discriminator_optimizer,
+                                criterion = criterion,
+                                batch_size = batch_size,
+                                device = device,
+                                dataset_size = dataset_size,
+                                ones_label = ones_label,
+                                zeros_label = zeros_label,
+                                latent_dim_input = latent_dim_input,
+                                scale_image_func = scale_image_func,
+                                original_dataset_path = original_dataset_path,
+                                experiment_name=args.experiment_name,
+                                dataset_arg = dataset_arg)
+
+        # Start Flower server
+        fl.server.start_server(
+            server_address=f"127.0.0.1:{args.port}",
+            config=fl.server.ServerConfig(num_rounds=total_number_of_rounds),
+            strategy=strategy,
+        )
