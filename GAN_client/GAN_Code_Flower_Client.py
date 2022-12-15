@@ -119,7 +119,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_path",type=str, default=None)
     parser.add_argument("--batch_size",type=str, default=None)
     parser.add_argument("--port",type=str, default=8889)
-    parser.add_argument("--port",type=str, default=None)
+    parser.add_argument("--device",type=str, default=None)
 
     args = parser.parse_args()
 
