@@ -6,7 +6,7 @@ cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"/
 
 
 folders=("mnist_splits_5_05_noniid") 
-strategies = ("FedAdam" "FedYogi" "QFedAvg")
+strategies=("FedAdam" "FedYogi" "QFedAvg")
 echo "Starting experiments"
 
 for fold in ${folders[@]}; do
