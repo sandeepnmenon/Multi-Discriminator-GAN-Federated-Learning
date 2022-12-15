@@ -46,7 +46,7 @@ def load_cifar_gan(lr=0.0002,nz = 100, ngf = 64, ndf=64, nc= 3, weights_init = w
         discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
 
     # Loss and optimizers
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
 
     return generator, discriminator, g_optimizer, d_optimizer,criterion
 
@@ -71,7 +71,7 @@ def load_cifar_discriminator(lr=0.0002,nz = 100, ngf = 64, ndf=64, nc= 3, weight
         discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
 
     # Loss and optimizers
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
 
     return discriminator, d_optimizer,criterion
 
@@ -101,7 +101,7 @@ def load_cifar_generator(lr=0.0002,nz = 100, ngf = 64, ndf=64, nc= 3, weights_in
 
 
     # Loss and optimizers
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
 
     return generator, g_optimizer, criterion
 
