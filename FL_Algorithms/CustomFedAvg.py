@@ -54,26 +54,26 @@ import subprocess
 ##### Custom FedAvg Strategy for training GANs #####
 ####################################################
 
-WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
-Setting `min_available_clients` lower than `min_fit_clients` or
-`min_evaluate_clients` can cause the server to fail when there are too few clients
-connected to the server. `min_available_clients` must be set to a value larger
-than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
-"""
+# WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
+# Setting `min_available_clients` lower than `min_fit_clients` or
+# `min_evaluate_clients` can cause the server to fail when there are too few clients
+# connected to the server. `min_available_clients` must be set to a value larger
+# than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
+# """
 
 
-# Load model for server-side parameter initialization
+# # Load model for server-side parameter initialization
 generator, discriminator, g_optimizer, d_optimizer, criterion = load_gan()
 
 
-# Configuring device for training
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# # Configuring device for training
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
      
-generator = generator.to(device)
-discriminator = discriminator.to(device)
+# generator = generator.to(device)
+# discriminator = discriminator.to(device)
 
-# Setting Batchsize
+# # Setting Batchsize
 batch_size = 128
 
 class CustomFedAvg(Strategy):
@@ -272,7 +272,7 @@ class CustomFedAvg(Strategy):
         latent_dim = self.latent_dim_input
 
         # fake images
-        noise = torch.randn(n, latent_dim).to(device)
+        noise = torch.randn(n, latent_dim).to(self.device)
         fake_images = self.Generator_model(noise)
 
         config["fake_images"] = str(fake_images.cpu().detach().numpy().tolist())
@@ -374,7 +374,7 @@ class CustomFedAvg(Strategy):
 
         for _ in range(2):
 
-            noise = torch.randn(n, latent_dim).to(device)
+            noise = torch.randn(n, latent_dim).to(self.device)
             fake_images = self.Generator_model(noise)
             fake_outputs = self.Discriminator_model(fake_images)
 
@@ -422,7 +422,7 @@ class CustomFedAvg(Strategy):
                 num_batch = 500
                 latent_dim = self.latent_dim_input
                 
-                noise = torch.randn(n, latent_dim).to(device)
+                noise = torch.randn(n, latent_dim).to(self.device)
                 fake_images = self.Generator_model(noise)
                 
                 fake_images = fake_images.reshape(-1, 1, 28, 28)
@@ -436,7 +436,7 @@ class CustomFedAvg(Strategy):
 
             
 
-            command = "python -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
+            command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")
@@ -457,7 +457,7 @@ class CustomFedAvg(Strategy):
                 num_batch = 500
                 latent_dim = self.latent_dim_input
                 
-                noise = torch.randn(n, latent_dim).to(device)
+                noise = torch.randn(n, latent_dim).to(self.device)
                 fake_images = self.Generator_model(noise)
                 
                 fake_images = fake_images.reshape(-1, 1, 28, 28)
@@ -467,7 +467,7 @@ class CustomFedAvg(Strategy):
                     save_image(self.scale_image_func(fake_images[j-1]), f"{eval_dir}/{str(i)+'_'+str(j)}.png")
 
 
-            command = "python -m pytorch_fid --batch-size 500 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
+            command = "python -m pytorch_fid --batch-size 128 "+self.original_dataset_path+" "+eval_dir+f" > GAN_server_{self.experiment_name}/fid_results_"+ str(self.current_epoch_no) +".txt"
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             print ("FID calculation success")
