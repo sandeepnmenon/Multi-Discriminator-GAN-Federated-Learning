@@ -1,6 +1,7 @@
 from typing import Dict, List, Tuple, Optional
 from collections import OrderedDict
 import os
+import yaml
 import torch.nn as nn
 import torch
 from torchvision.utils import save_image
@@ -109,6 +110,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch_size",  default=BATCH_SIZE)
+    parser.add_argument("--dataset",  default="mnist")
     parser.add_argument("--dataset_size",  default=DATASET_SIZE)
     parser.add_argument("--latent_dim_input",  default=LATENT_DIM_INPUT)
     parser.add_argument("--original_dataset_path",  default=ORIGINAL_DATASET_PATH)
@@ -154,7 +156,10 @@ if __name__ == "__main__":
 
 
     # Define strategy
+    dataset = args.dataset
     strategy_type = args.strategy_type
+    # read from corresponding yaml file
+    strategy_conf = yaml.load(open(f"config/{dataset}/{strategy_type.lower()}.yaml", "r"), Loader=yaml.FullLoader)
     strategy_module = fl.server.strategy.__dict__[strategy_type]
     strategy = strategy_module(
     	fraction_fit = 1.0,
@@ -167,6 +172,11 @@ if __name__ == "__main__":
         initial_parameters=parameters_init,
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,
+        beta_1=strategy_conf["init"]["beta_1"],
+        beta_2=strategy_conf["init"]["beta_2"],
+        eta=strategy_conf["init"]["eta"],
+        tau=strategy_conf["init"]["tau"],
+        eta_lr=strategy_conf["init"]["eta_lr"],
     )
 
     # Start Flower server
