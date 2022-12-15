@@ -34,7 +34,7 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
     return {"accuracy": sum(accuracies) / sum(examples)}
 
 
-def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, original_dataset_path: str, experiment_name: str):
+def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, original_dataset_path: str, experiment_name: str, dataset: str):
     """Return an evaluation function for server-side evaluation."""
 
 
@@ -70,7 +70,7 @@ def get_evaluate_fn(generator: nn.Module, discriminator: nn.Module, original_dat
         generator.load_state_dict(gstate_dict, strict=False)
         discriminator.load_state_dict(dstate_dict, strict=False)
 
-        fake_images, loss = generate_images(generator, discriminator, BATCH_SIZE, shape=(1, 28, 28))
+        fake_images, loss = generate_images(generator, discriminator, BATCH_SIZE, shape=(1, 28, 28), dataset=dataset)
         save_image(fake_images, os.path.join(dir_name,f"{server_round}_generated_images.png"))
 
         for i in range(1, BATCH_SIZE):
@@ -161,16 +161,18 @@ if __name__ == "__main__":
     # Define strategy
     strategy_type = args.strategy_type
     # read from corresponding yaml file
-    strategy_conf = yaml.load(open(f"config/{dataset}/{strategy_type.lower()}.yaml", "r"), Loader=yaml.FullLoader)
     strategy_module = fl.server.strategy.__dict__[strategy_type]
-    strategy_args = strategy_conf["init"]
+    strategy_args = {}
+    if strategy_type != "FedAvg":
+        strategy_conf = yaml.load(open(f"config/{dataset}/{strategy_type.lower()}.yaml", "r"), Loader=yaml.FullLoader)
+        strategy_args = strategy_conf["init"]
     strategy = strategy_module(
     	fraction_fit = 1.0,
         fraction_evaluate = 1.0,
         min_fit_clients = no_of_clients,
         min_evaluate_clients = no_of_clients,
         min_available_clients = no_of_clients,
-        evaluate_fn=get_evaluate_fn(generator, discriminator, original_dataset_path, experiment_name),
+        evaluate_fn=get_evaluate_fn(generator, discriminator, original_dataset_path, experiment_name, dataset),
         evaluate_metrics_aggregation_fn=weighted_average,
         initial_parameters=parameters_init,
         on_fit_config_fn=fit_config,

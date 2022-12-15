@@ -16,7 +16,7 @@ import numpy as np
 import torchvision
 
 from core.models import Generator, Discriminator, G_D_Assemble
-from core.utils import load_gan, get_combined_gan_params, train_gan, load_cifar_gan, generate_images
+from core.utils import load_gan, get_combined_gan_params, train_gan, load_cifar_gan, train_cifar_gan
 
 # #############################################################################
 # 1. Regular PyTorch pipeline: nn.Module, train, test, and DataLoader
@@ -29,7 +29,7 @@ USE_FEDBN = True
 
 # Define Flower client
 class FlowerClient(fl.client.NumPyClient):
-    def __init__(self, generator, discriminator, g_optimiser, d_optimiser, dataloader, client_id) -> None:
+    def __init__(self, generator, discriminator, g_optimiser, d_optimiser, dataloader, client_id, dataset) -> None:
         self.generator = generator
         self.discriminator = discriminator
         self.g_optimiser = g_optimiser
@@ -39,6 +39,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.client_id = client_id
         self.shape = (1, 28, 28)
         self.use_fedbn = USE_FEDBN
+        self.dataset = dataset
 
     def get_parameters(self, config):
         return get_combined_gan_params(self.generator, self.discriminator, self.use_fedbn)
@@ -63,8 +64,10 @@ class FlowerClient(fl.client.NumPyClient):
         local_epochs = config["local_epochs"]
         server_round = config["current_round"]
         self.set_parameters(parameters, is_fedbn=self.use_fedbn)
-        self.generator, self.discriminator, g_loss = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, local_epochs, self.client_id)
-
+        if self.dataset == "mnist":
+            self.generator, self.discriminator, g_loss = train_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, local_epochs, self.client_id)
+        elif self.dataset == "cifar10":
+            self.generator, self.discriminator, g_loss = train_cifar_gan(self.generator, self.discriminator, self.g_optimiser, self.d_optimiser, self.dataloader, self.batch_size, local_epochs, self.client_id)
         return self.get_parameters(config), len(self.dataloader.dataset), {"g_loss": g_loss}
 
     def evaluate(self, parameters, config):
@@ -83,6 +86,7 @@ if __name__ == "__main__":
     parser.add_argument("--client_id", type=str, default=0)
     parser.add_argument("--dataset",  default="mnist", choices=["mnist", "cifar10"])
     parser.add_argument("--dataset_path",type=str, default=None)
+    parser.add_argument("--device",  default=DEVICE)
     parser.add_argument("--batch_size",type=str, default=None)
     parser.add_argument("--port",type=str, default=8889)
 
@@ -120,6 +124,6 @@ if __name__ == "__main__":
     # Create models     
 
     flower_client = FlowerClient(
-        generator, discriminator, g_optimiser, d_optimiser, data_loader, client_id=eval(args.client_id))
+        generator, discriminator, g_optimiser, d_optimiser, data_loader, client_id=eval(args.client_id), dataset=dataset)
     # Start Flower client
     fl.client.start_numpy_client(server_address=f"127.0.0.1:{args.port}",client=flower_client)

@@ -24,6 +24,7 @@ def weights_init(m):
 class CIFARGenerator(nn.Module):
     def __init__(self,nz,ngf,nc):
         super(CIFARGenerator, self).__init__()
+        self.latent_dim = nz
         self.main = nn.Sequential(
             # input is Z, going into a convolution
             nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
