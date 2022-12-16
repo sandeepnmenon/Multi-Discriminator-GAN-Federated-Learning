@@ -230,7 +230,7 @@ def train_cifar_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epo
     G = G.to(device)
 
     # Loss and optimizers
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
 
     # scale image back to (0, 1)
 
@@ -292,9 +292,10 @@ def train_cifar_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epo
             # do it twice:
             for _ in range(2):
                 # fake images
-                noise = torch.randn(n, latent_dim).to(device)
+                noise = torch.randn(n, latent_dim, 1, 1).to(device)
                 fake_images = G(noise)
                 fake_outputs = D(fake_images)
+                fake_outputs = fake_outputs.unsqueeze(1)
 
                 # reverse the labels!
                 g_loss = criterion(fake_outputs, ones)
