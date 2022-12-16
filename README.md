@@ -2,6 +2,14 @@
 This is the code and experimental setup for StarDFLGAN. It is named inspired from the Star network topology of one server in the middle talking back and forth to many clients. FLGANs are GANs trained in a federated setting. DGANs are GANs were the discriminator is decoupled from the generated. Combining them we get StarDFLGANs!!.
 
 In this architecture we have one server running a generator and discriminator. All the clients run only the decoupled discriminator. This reduces computation cost at the clients, which is important and necessary in Federated Learning settings.
+![alt text](images/StarDFLGAN.png)
+|Component|Description|
+|:-------------------------:|:-------------------------:|
+|D | Discriminator|
+|G | Generator|
+|Blue lines| Generator sending fake images to client nodes|
+|Black lines| Client nodes sending parameters to server.|
+
 
 # Dependencies
 1. PyTorch >= 1.0.0
@@ -29,6 +37,31 @@ cd experiments_folder/MOON && python split_dataset.py --dir_download ../current_
 ```
 
 # Instructions to run the experiments
+Change the shell scripts to point to the correct directories 
+
+
+| Parameters for Flower_Server.py                      | Description                                 |
+| ----------------------------- | ---------------------------------------- |
+| `----port`              | Port number for Flower server |
+| `--batch_size`                  | Batch size for training       |
+| `--dataset_size`                | Size of the dataset             |
+| `--latent_dim_input`                | Latent dimension of the input noise             |
+| `--original_dataset_path`                   | Path to the original dataset             |
+| `--device`               | Device to be used. cuda:0 or cpu             |
+| `--num_clients`               | Number of clients to be used. 2,5,10 etc             |
+| `--experiment_name`          | Name of the experiment             |
+| `--dataset`          | Dataset to be used. mnist, cifar10             |
+
+
+
+| Parameters for GAN_client.py                      | Description                                 |
+| ----------------------------- | ---------------------------------------- |
+| `----port`              | Port number for Flower server |
+| `--client_id`                  | Client id       |
+| `--dataset_path`                | Path to the dataset             |
+| `--batch_size`                | Batch size for training             |
+| `--dataset`                   | Dataset to be used. mnist, cifar10             |
+
 
 1. create a new virtual environment
 1. pip install -r requirements.txt
