@@ -38,10 +38,32 @@ cd experiments_folder/MOON && python split_dataset.py --dir_download ../current_
 
 
 # Results
+StarDFLGan gives 50% improved results than FLGAN on IID data
+
+For IID data, as number of clients increase we do not observe any degradation of performance. Hence the system is stable.
+
 ![alt text](images/output1.png)
 ![alt text](images/output2.png)
+
+As number of clients increase we can see that the generator model is able to perform better when the data is less skewed (higher beta)
+
+Beta is a parameter in the Dirichlet distribution representing non-IID data. Lower the value of beta, the more skewed the data is.
+
 ![alt text](images/output3.png)
 ![alt text](images/output4.png)
 ![alt text](images/output5.png)
+
+STARDFLGAN gives 20% improved results for less non-IID data (beta=5) 
+
+But performs poorly compared to FLGANs for highly skewed data. To mitigate this we employ FedBN.
+
 ![alt text](images/output6.png)
 ![alt text](images/output7.png)
+![alt text](images/output8.png)
+To tackle highly skewed data we employed FedBN. We observe that for non-IID data FedBN gives 20% improvement for MNIST and 65% improvement for CIFAR10
+
+Also, we see that for IID data, using FedBN does not degrade the results (top right graph). Hence it can be used in any setting to get better results
+
+![alt text](images/output9.png)
+![alt text](images/output10.png)
+![alt text](images/output11.png)
