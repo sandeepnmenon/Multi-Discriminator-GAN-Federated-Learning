@@ -230,7 +230,7 @@ def train_cifar_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epo
     G = G.to(device)
 
     # Loss and optimizers
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
 
     # scale image back to (0, 1)
 
