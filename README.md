@@ -60,6 +60,7 @@ But performs poorly compared to FLGANs for highly skewed data. To mitigate this 
 ![alt text](images/output6.png)
 ![alt text](images/output7.png)
 ![alt text](images/output8.png)
+
 To tackle highly skewed data we employed FedBN. We observe that for non-IID data FedBN gives 20% improvement for MNIST and 65% improvement for CIFAR10
 
 Also, we see that for IID data, using FedBN does not degrade the results (top right graph). Hence it can be used in any setting to get better results
