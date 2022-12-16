@@ -273,7 +273,6 @@ def train_cifar_gan(G, D, g_optimizer, d_optimizer, data_loader, batch_size, epo
 
             # fake images
             noise = torch.randn(n, latent_dim, 1, 1).to(device)
-            print("Noise : ",noise.shape)
             fake_images = G(noise)
             fake_outputs = D(fake_images)
             fake_outputs = fake_outputs.unsqueeze(1)
