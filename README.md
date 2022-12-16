@@ -35,3 +35,13 @@ cd experiments_folder/MOON && python split_dataset.py --dir_download ../current_
 1. ./run_mnist_basic_exp.sh
 1. The resulting generated images by GAN trained using federated learning is saved in gan_images folder 
    which will be created once the code completes one epoch of training. 
+
+
+# Results
+![alt text](images/output1.png)
+![alt text](images/output2.png)
+![alt text](images/output3.png)
+![alt text](images/output4.png)
+![alt text](images/output5.png)
+![alt text](images/output6.png)
+![alt text](images/output7.png)
