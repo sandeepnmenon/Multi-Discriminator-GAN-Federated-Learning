@@ -10,6 +10,7 @@ In this architecture we have one server running a generator and discriminator. A
 |Blue lines| Generator sending fake images to client nodes|
 |Black lines| Client nodes sending parameters to server.|
 
+Presentation link is [here](https://drive.google.com/file/d/1t41hnviY2qq0W549GTXLSTrSfgqcaYHB/view?usp=share_link)
 
 # Dependencies
 1. PyTorch >= 1.0.0
